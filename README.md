@@ -57,6 +57,28 @@ function sendBlob(blob) {
 }
 ```
 
+##### Receving file in Express example
+
+```javascript
+const express = require('express');
+const app = express();
+const bodyParser = require('body-parser');
+const cors = require('cors');
+const multer  = require('multer');
+const upload = multer({ dest: 'uploads/' })
+
+app.use(bodyParser.urlencoded({ extended: true}))
+app.use(bodyParser.json());
+app.use(cors());
+
+app.post('/audio', upload.single('data'), (req, res) => {
+  console.log(req.file);
+  res.send('Got file');
+});
+
+app.listen(5555);
+```
+
 # Documentation
 
 Most methods return a promise.

@@ -1,7 +1,13 @@
 # Example
 
+Run in root of this repo:
+
 ```bash
 python -m SimpleHTTPServer 9000
 ```
 
-Navigate to `http://localhost:9000/example`.
+Then navigate to:
+
+```text
+http://localhost:9000/example
+```
