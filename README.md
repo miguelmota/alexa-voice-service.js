@@ -10,7 +10,7 @@ With this library you are able to record audio in *mono channel, sampled at 16k 
 
 View the full [example code](/example).
 
-```
+```javascript
 var avs = new AVS();
 
 avs.requestMic().then(mediaStreamReady);
