@@ -16,11 +16,11 @@ avs.on('error', (error) => {
 
 avs.requestMic();
 
-start.addEventListener('click', function() {
+start.addEventListener('click', () => {
   avs.startRecording();
 });
 
-stop.addEventListener('click', function() {
+stop.addEventListener('click', () => {
   avs.stopRecording().then((dataView) => {
     const blob = new Blob ([dataView], {
       type: 'audio/wav'
@@ -43,6 +43,7 @@ function sendBlob(blob) {
 
   xhr.onload = (evt) => {
     if (xhr.status == 200) {
+      console.log(xhr.response);
       //const responseBlob = new Blob([xhr.response], {type: 'audio/mp3'});
     }
   };
