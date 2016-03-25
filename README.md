@@ -57,9 +57,9 @@ function sendBlob(blob) {
 }
 ```
 
-# Docs
+# Documentation
 
-All methods return a promise.
+Most methods return a promise.
 
 ```javascript
 AVS(options) - constructor
