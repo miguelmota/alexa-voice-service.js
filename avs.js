@@ -140,6 +140,9 @@
         const buffer = new ArrayBuffer(44 + interleaved.length * 2);
         const view = new DataView(buffer);
 
+      /**
+       * @credit https://github.com/mattdiamond/Recorderjs
+       */
         Helpers.writeUTFBytes(view, 0, 'RIFF');
         view.setUint32(4, 44 + interleaved.length * 2, true);
         Helpers.writeUTFBytes(view, 8, 'WAVE');
