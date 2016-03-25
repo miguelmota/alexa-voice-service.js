@@ -2,18 +2,16 @@
 
 > Library for interacting with Alexa Voice Service in the browser.
 
-Note that this library is still in development.
+**THIS LIBRARY IS STILL IN DEVELOPMENT**.
 
 # Example
 
-View full [example code](/example)
+View the full [example code](/example).
 
 ```
 var avs = new AVS();
 
-avs.requestMic().then(() => {
-  console.log('Ready to listen.');
-})
+avs.requestMic().then(() => ready);
 
 startButton.addEventListener('click', function() {
   avs.startRecording();
@@ -50,7 +48,7 @@ function sendBlob(blob) {
 
   xhr.onload = (evt) => {
     if (xhr.status == 200) {
-      // handle response
+      handleResponse(xhr.response);
     }
   };
   xhr.send(fd);
