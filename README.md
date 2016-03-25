@@ -11,13 +11,13 @@ View the full [example code](/example).
 ```
 var avs = new AVS();
 
-avs.requestMic().then(() => ready);
+avs.requestMic().then(mediaStreamReady);
 
-startButton.addEventListener('click', function() {
+startButton.addEventListener('click', () => {
   avs.startRecording();
 });
 
-stopButton.addEventListener('click', function() {
+stopButton.addEventListener('click', () => {
   avs.stopRecording().then((dataView) => {
     const blob = new Blob ([dataView], {
       type: 'audio/wav'
@@ -57,6 +57,8 @@ function sendBlob(blob) {
 
 # Docs
 
+All methods return a promise.
+
 ```javascript
 AVS(options) - constructor
 
@@ -68,7 +70,7 @@ avs.connectMediaStream(stream) -> promise;
 
 avs.stopRecording() -> promise;
 avs.startRecording() -> promise;
-avs.playBlob() -> promise;
+avs.playBlob(blob) -> promise;
 
 avs.on(identifier, callback)
 
