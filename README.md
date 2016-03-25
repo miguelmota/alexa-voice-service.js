@@ -72,8 +72,7 @@ app.use(bodyParser.json());
 app.use(cors());
 
 app.post('/audio', upload.single('data'), (req, res) => {
-  console.log(req.file);
-  res.send('Got file');
+  res.json(req.file);
 });
 
 app.listen(5555);
