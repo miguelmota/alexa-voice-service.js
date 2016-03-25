@@ -2,7 +2,7 @@
 
 > Library for interacting with [Alexa Voice Service](https://developer.amazon.com/public/solutions/alexa/alexa-voice-service) in the browser.
 
-##### **THIS LIBRARY IS STILL IN DEVELOPMENT**.
+#### **THIS LIBRARY IS STILL IN DEVELOPMENT**.
 
 With this library you are able to record audio in *mono channel, sampled at 16k Hz, and signed 16 bit PCM encoding* which is required by AVS.
 
