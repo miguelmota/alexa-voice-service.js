@@ -1,0 +1,47 @@
+{
+  "name": "alexa-voice-service",
+  "version": "0.0.1",
+  "description": "Alexa Voice Service wrapper for the browser.",
+  "main": "avs.js",
+
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "./node_modules/tape/bin/tape test/*.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/miguelmota/alexa-voice-service"
+  },
+  "keywords": [
+    "amazon",
+    "alexa",
+    "skill",
+    "kit",
+    "echo",
+    "voice",
+    "ask",
+    "avs",
+    "speech"
+  ],
+  "author": {
+    "name": "Miguel Mota",
+    "email": "hello@miguelmota.com",
+    "url": "http://www.miguelmota.com/"
+  },
+  "license": {
+    "type": "MIT",
+    "url": "https://github.com/miguelmota/alexa-voice-service/blob/master/LICENSE.md"
+  },
+  "bugs": {
+    "url": "https://github.com/miguelmota/alexa-voice-service/issues"
+  },
+  "homepage": "https://github.com/miguelmota/alexa-voice-service",
+  "devDependencies": {
+    "tape": "^3.0.3"
+  },
+  "engines": {
+    "node": ">=0.10.0"
+  }
+}
