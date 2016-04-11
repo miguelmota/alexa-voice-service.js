@@ -46,6 +46,7 @@ options:
 
 avs.login({responseType: 'code, token (default)', newWindow: false}) -> promise(response);
 avs.promptUserLogin() -> promise();
+avs.getTokenFromUrl() -> promise(token);
 avs.getCodeFromUrl() -> promise(code);
 avs.getTokenFromCode(code) -> promise(response);
 
