@@ -21,7 +21,7 @@ The audio recorded in this library is *mono channel, sampled at 16k Hz, and sign
 
 # Install
 
-```javascript
+```bash
 npm install alexa-voice-service
 ```
 
