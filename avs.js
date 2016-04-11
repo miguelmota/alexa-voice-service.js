@@ -77,17 +77,35 @@
       }
     }
 
-    login() {
+    login(options = {}) {
       return new Promise((resolve, reject) => {
-        return this.getCodeFromUrl()
-        .then(code => this.getTokenFromCode(code))
-        .catch(() => this.promptUserLogin())
+        return this.getTokenFromUrl()
+        .catch(() => this.promptUserLogin(options))
       });
     }
 
-    promptUserLogin() {
+    promptUserLogin(options = {responseType: 'token', newWindow: false}) {
       return new Promise((resolve, reject) => {
-        const responseType ='code';
+        if (typeof options.reponseType === 'undefined') {
+          options.responseType = 'token';
+        }
+
+        if (typeof options.responseType !== 'string') {
+          const error = new Error('`responseType` must a string.');
+          this._log(error);
+          return reject(error);
+        }
+
+        const newWindow = !!options.newWindow;
+
+        const responseType = options.responseType;
+
+        if (!(responseType === 'code' || responseType === 'token')) {
+          const error = new Error('`responseType` must be either `code` or `token`.');
+          this._log(error);
+          return reject(error);
+        }
+
         const scope = 'alexa:all';
         const scopeData = {
           [scope]: {
@@ -100,7 +118,11 @@
 
         const authUrl = `https://www.amazon.com/ap/oa?client_id=${this._clientId}&scope=${encodeURIComponent(scope)}&scope_data=${encodeURIComponent(JSON.stringify(scopeData))}&response_type=${responseType}&redirect_uri=${encodeURI(this._redirectUri)}`
 
-        window.open(authUrl);
+        if (newWindow) {
+          window.open(authUrl);
+        } else {
+          window.location.href = authUrl;
+        }
       });
     }
 
@@ -160,6 +182,34 @@
         };
 
         xhr.send(postData);
+      });
+    }
+
+    getTokenFromUrl() {
+      return new Promise((resolve, reject) => {
+        let queryString = window.location.href.split('?#');
+
+        if (queryString.length === 2) {
+          queryString = queryString[1];
+        } else {
+          queryString = window.location.search.substr(1);
+        }
+
+        const query = qs.parse(queryString);
+        const token = query.access_token;
+        const refreshToken = query.refresh_token;
+        const tokenType = query.token_type;
+        const expiresIn = query.expiresIn;
+
+        if (token) {
+          this.setToken(token)
+          this.emit('login');
+          this._log('Logged in.');
+
+          return resolve(token);
+        }
+
+        return reject(null);
       });
     }
 

@@ -3,40 +3,23 @@ const AVS = require('../avs');
 const avs = new AVS({
   debug: true,
   clientId: 'amzn1.application-oa2-client.696ab90fc5844fdbb8efc17394a79c00',
-  clientSecret: '1e3a306483c78510d4cdeb08e0a522f7ec3c1629ae1d53c325bfc3e95d80c0d3',
   deviceId: 'test_device',
   deviceSerialNumber: 123,
   redirectUri: `https://${window.location.host}/authresponse`
 });
 
-const login = document.getElementById('login');
-const logOutput = document.getElementById('log');
-const start = document.getElementById('start');
-const stop = document.getElementById('stop');
-
-avs.getCodeFromUrl()
-.then(code => avs.getTokenFromCode(code))
-.then(() => avs.requestMic())
-.catch(() => {});
-
-login.addEventListener('click', (event) => {
-  avs.login()
-  .then(response => {
-    avs.requestMic();
-  });
-});
-
-avs.on(AVS.EventTypes.LOGIN, (message) => {
+avs.on(AVS.EventTypes.LOGIN, () => {
   login.disabled = true;
   start.disabled = false;
+  stop.disabled = true;
 });
 
-avs.on(AVS.EventTypes.RECORD_START, (message) => {
+avs.on(AVS.EventTypes.RECORD_START, () => {
   start.disabled = true;
   stop.disabled = false;
 });
 
-avs.on(AVS.EventTypes.RECORD_STOP, (message) => {
+avs.on(AVS.EventTypes.RECORD_STOP, () => {
   start.disabled = false;
   stop.disabled = true;
 });
@@ -47,6 +30,23 @@ avs.on(AVS.EventTypes.LOG, (message) => {
 
 avs.on(AVS.EventTypes.ERROR, (error) => {
   logOutput.innerHTML += `<li>ERROR: ${error}</li>`;
+});
+
+
+const login = document.getElementById('login');
+const logOutput = document.getElementById('log');
+const start = document.getElementById('start');
+const stop = document.getElementById('stop');
+
+avs.getTokenFromUrl()
+.then(() => avs.requestMic())
+.catch(() => {});
+
+login.addEventListener('click', (event) => {
+  avs.login()
+  .then(response => {
+    avs.requestMic();
+  });
 });
 
 start.addEventListener('click', () => {
