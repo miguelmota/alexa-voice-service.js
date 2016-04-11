@@ -1,6 +1,6 @@
 {
   "name": "alexa-voice-service",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Alexa Voice Service wrapper for the browser.",
   "main": "dist/avs.js",
   "directories": {
