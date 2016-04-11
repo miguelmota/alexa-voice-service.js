@@ -2,7 +2,7 @@
 
 > Library for interacting with [Alexa Voice Service (AVS)](https://developer.amazon.com/public/solutions/alexa/alexa-voice-service) in the browser.
 
-**NOTE: THIS LIBRARY IS STILL IN DEVELOPMENT**
+NOTE: THIS LIBRARY IS STILL IN DEVELOPMENT.
 
 Things you can do with this library now:
 
@@ -27,7 +27,7 @@ View the full [example code](/example).
 
 Most methods return a promise.
 
-```javascript
+```text
 AVS(options) - constructor
 
 options:
@@ -43,7 +43,7 @@ avs.promptUserLogin() -> promise();
 avs.getCodeFromUrl() -> promise(code);
 avs.getTokenFromCode(code) -> promise(response);
 
-avs.requestMic() -> promise(stream)
+avs.requestMic() -> promise(stream);
 avs.connectMediaStream(stream) -> promise;
 
 avs.stopRecording() -> promise;
@@ -57,8 +57,8 @@ identifiers:
   log - when a log occurs
   error - when an error occurs
   login - when user is logged in
-  recordStart - when recording started
-  recordStop - when recording stopped
+  recordStart - when recording is started
+  recordStop - when recording is stopped
 ```
 
 # TODO
