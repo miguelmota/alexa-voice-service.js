@@ -2,13 +2,14 @@
   "name": "alexa-voice-service",
   "version": "0.0.1",
   "description": "Alexa Voice Service wrapper for the browser.",
-  "main": "avs.js",
-
+  "main": "dist/avs.js",
   "directories": {
     "test": "test"
   },
   "scripts": {
-    "test": "./node_modules/tape/bin/tape test/*.js"
+    "test": "./node_modules/tape/bin/tape test/*.js",
+    "build": "browserify avs.js -o dist/avs.js",
+    "watch": "watchify avs.js -o dist/avs.js -v"
   },
   "repository": {
     "type": "git",
@@ -43,5 +44,10 @@
   },
   "engines": {
     "node": ">=0.10.0"
+  },
+  "dependencies": {
+    "buffer": "^4.5.1",
+    "http-message-parser": "0.0.21",
+    "qs": "^6.1.0"
   }
 }

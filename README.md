@@ -1,82 +1,27 @@
-# alexa-voice-service
+# alexa-voice-service.js
 
-> Library for interacting with [Alexa Voice Service](https://developer.amazon.com/public/solutions/alexa/alexa-voice-service) in the browser.
+> Library for interacting with [Alexa Voice Service (AVS)](https://developer.amazon.com/public/solutions/alexa/alexa-voice-service) in the browser.
 
-#### **THIS LIBRARY IS STILL IN DEVELOPMENT**.
+**NOTE: THIS LIBRARY IS STILL IN DEVELOPMENT**
 
-With this library you are able to record audio in *mono channel, sampled at 16k Hz, and signed 16 bit PCM encoding* which is required by AVS.
+Things you can do with this library now:
+
+- Login with Amazon
+- Request microphone
+- Record user audio
+- Send user audio to AVS
+- Parse response from AVS
+- Play MP3 response from AVS
+
+The audio recorded in this library is *mono channel, sampled at 16k Hz, and signed 16 bit PCM encoding* which is required by AVS.
+
+# Demo
+
+[http://lab.moogs.io/alexa-voice-service](http://lab.moogs.io/alexa-voice-service)
 
 # Example
 
 View the full [example code](/example).
-
-```javascript
-var avs = new AVS();
-
-avs.requestMic().then(mediaStreamReady);
-
-startButton.addEventListener('click', () => {
-  avs.startRecording();
-});
-
-stopButton.addEventListener('click', () => {
-  avs.stopRecording().then((dataView) => {
-    const blob = new Blob ([dataView], {
-      type: 'audio/wav'
-    });
-
-    avs.playBlob(blob);
-    sendBlob(blob);
-  });
-});
-
-avs.on('log', (message) => {
-  logOutput.innerHTML += `<li>LOG: ${message}</li>`;
-});
-
-avs.on('error', (error) => {
-  logOutput.innerHTML += `<li>ERROR: ${error}</li>`;
-});
-
-function sendBlob(blob) {
-  const xhr = new XMLHttpRequest();
-  const fd = new FormData();
-
-  fd.append('fname', 'audio.wav');
-  fd.append('data', blob);
-
-  xhr.open('POST', 'http://localhost:5555/audio', true);
-  xhr.responseType = 'blob';
-
-  xhr.onload = (evt) => {
-    if (xhr.status == 200) {
-      handleResponse(xhr.response);
-    }
-  };
-  xhr.send(fd);
-}
-```
-
-##### Receving file in Express example
-
-```javascript
-const express = require('express');
-const app = express();
-const bodyParser = require('body-parser');
-const cors = require('cors');
-const multer  = require('multer');
-const upload = multer({ dest: 'uploads/' })
-
-app.use(bodyParser.urlencoded({ extended: true}))
-app.use(bodyParser.json());
-app.use(cors());
-
-app.post('/audio', upload.single('data'), (req, res) => {
-  res.json(req.file);
-});
-
-app.listen(5555);
-```
 
 # Documentation
 
@@ -88,18 +33,27 @@ AVS(options) - constructor
 options:
   debug - {boolean} logs to console
 
+avs.login() -> promise(response);
+avs.promptUserLogin() -> promise();
+avs.getCodeFromUrl() -> promise(code);
+avs.getTokenFromCode(code) -> promise(response);
+
 avs.requestMic() -> promise(stream)
 avs.connectMediaStream(stream) -> promise;
 
 avs.stopRecording() -> promise;
 avs.startRecording() -> promise;
 avs.playBlob(blob) -> promise;
+avs.sendAudio(dataView) -> promise(response);
 
 avs.on(identifier, callback)
 
 identifiers:
   log - when a log occurs
   error - when an error occurs
+  login - when user is logged in
+  recordStart - when recording started
+  recordStop - when recording stopped
 ```
 
 # TODO

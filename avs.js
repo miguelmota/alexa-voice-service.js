@@ -1,6 +1,10 @@
 (function(root) {
   'use strict';
 
+  const Buffer = require('buffer').Buffer;
+  const qs = require('qs');
+  const httpMessageParser = require('http-message-parser');
+
   if (!navigator.getUserMedia) {
     navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia;
   }
@@ -18,7 +22,44 @@
       this._outputSampleRate = 16000;
       this._audioInput = null;
       this._volumeNode = null;
-      this._debug = !!options.debug;
+      this._debug = false;
+      this._token = null;
+      this._clientId = null;
+      this._deviceId= null;
+      this._deviceSerialNumber = null;
+      this._redirectUri = null;
+
+      if (options.token) {
+        this.setToken(options.token);
+      }
+
+      if (options.refreshToken) {
+        this.setRefreshToken(options.refreshToken);
+      }
+
+      if (options.clientId) {
+        this.setClientId(options.clientId);
+      }
+
+      if (options.clientSecret) {
+        this.setClientSecret(options.clientSecret);
+      }
+
+      if (options.deviceId) {
+        this.setDeviceId(options.deviceId);
+      }
+
+      if (options.deviceSerialNumber) {
+        this.setDeviceSerialNumber(options.deviceSerialNumber);
+      }
+
+      if (options.redirectUri) {
+        this.setRedirectUri(options.redirectUri);
+      }
+
+      if (options.debug) {
+        this.setDebug(options.debug);
+      }
 
       observable(this);
     }
@@ -29,12 +70,216 @@
         type = 'log';
       }
 
-      this.trigger('log', message);
+      this.emit('log', message);
 
       if (this._debug) {
         console[type](message);
       }
     }
+
+    login() {
+      return new Promise((resolve, reject) => {
+        return this.getCodeFromUrl()
+        .then(code => this.getTokenFromCode(code))
+        .catch(() => this.promptUserLogin())
+      });
+    }
+
+    promptUserLogin() {
+      return new Promise((resolve, reject) => {
+        const responseType ='code';
+        const scope = 'alexa:all';
+        const scopeData = {
+          [scope]: {
+            productID: this._deviceId,
+            productInstanceAttributes: {
+              deviceSerialNumber: this._deviceSerialNumber
+            }
+          }
+        };
+
+        const authUrl = `https://www.amazon.com/ap/oa?client_id=${this._clientId}&scope=${encodeURIComponent(scope)}&scope_data=${encodeURIComponent(JSON.stringify(scopeData))}&response_type=${responseType}&redirect_uri=${encodeURI(this._redirectUri)}`
+
+        window.open(authUrl);
+      });
+    }
+
+    getTokenFromCode(code) {
+      return new Promise((resolve, reject) => {
+        if (typeof code !== 'string') {
+          const error = new TypeError('`code` must be a string.');
+          this._log(error);
+          return reject(error);
+        }
+
+        const grantType = 'authorization_code';
+        const postData = `grant_type=${grantType}&code=${code}&client_id=${this._clientId}&client_secret=${this._clientSecret}&redirect_uri=${encodeURIComponent(this._redirectUri)}`;
+        const url = 'https://api.amazon.com/auth/o2/token';
+
+        const xhr = new XMLHttpRequest();
+
+        xhr.open('POST', url, true);
+        xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded;charset=UTF-8');
+        xhr.onload = (event) => {
+          console.log('RESPONSE', xhr.response);
+
+          let response = xhr.response;
+
+          try {
+            response = JSON.parse(xhr.response);
+          } catch (error) {
+            this._log(error);
+            return reject(error);
+          }
+
+          const isObject = response instanceof Object;
+          const errorDescription = isObject && response.error_description;
+
+          if (errorDescription) {
+            const error = new Error(errorDescription);
+            this._log(error);
+            return reject(error);
+          }
+
+          const token = response.access_token;
+          const refreshToken = response.refresh_token;
+          const tokenType = response.token_type;
+          const expiresIn = response.expiresIn;
+
+          this.setToken(token)
+          this.setRefreshToken(refreshToken)
+
+          this.emit('login');
+          this._log('Logged in.');
+          resolve(response);
+        };
+
+        xhr.onerror = (error) => {
+          this._log(error);
+          reject(error);
+        };
+
+        xhr.send(postData);
+      });
+    }
+
+    getCodeFromUrl() {
+      return new Promise((resolve, reject) => {
+        const query = qs.parse(window.location.search.substr(1));
+        const code = query.code;
+
+        if (code) {
+          return resolve(code);
+        }
+
+        return reject(null);
+      });
+    }
+
+    setToken(token) {
+      return new Promise((resolve, reject) => {
+        if (typeof token === 'string') {
+          this._token = token;
+          resolve(this._token);
+        } else {
+          const error = new TypeError('`token` must be a string.');
+          this._log(error);
+          reject(error);
+        }
+      });
+    }
+
+    setRefreshToken(refreshToken) {
+      return new Promise((resolve, reject) => {
+        if (typeof refreshToken === 'string') {
+          this._refreshToken = refreshToken;
+          resolve(this._refreshToken);
+        } else {
+          const error = new TypeError('`refreshToken` must be a string.');
+          this._log(error);
+          reject(error);
+        }
+      });
+    }
+
+    setClientId(clientId) {
+      return new Promise((resolve, reject) => {
+        if (typeof clientId === 'string') {
+          this._clientId = clientId;
+          resolve(this._clientId);
+        } else {
+          const error = new TypeError('`clientId` must be a string.');
+          this._log(error);
+          reject(error);
+        }
+      });
+    }
+
+    setClientSecret(clientSecret) {
+      return new Promise((resolve, reject) => {
+        if (typeof clientSecret === 'string') {
+          this._clientSecret = clientSecret;
+          resolve(this._clientSecret);
+        } else {
+          const error = new TypeError('`clientSecret` must be a string');
+          this._log(error);
+          reject(error);
+        }
+      });
+    }
+
+    setDeviceId(deviceId) {
+      return new Promise((resolve, reject) => {
+        if (typeof deviceId === 'string') {
+          this._deviceId = deviceId;
+          resolve(this._deviceId);
+        } else {
+          const error = new TypeError('`deviceId` must be a string.');
+          this._log(error);
+          reject(error);
+        }
+      });
+    }
+
+    setDeviceSerialNumber(deviceSerialNumber) {
+      return new Promise((resolve, reject) => {
+        if (typeof deviceSerialNumber === 'number' || typeof deviceSerialNumber === 'string') {
+          this._deviceSerialNumber = deviceSerialNumber;
+          resolve(this._deviceSerialNumber);
+        } else {
+          const error = new TypeError('`deviceSerialNumber` must be a number or string.');
+          this._log(error);
+          reject(error);
+        }
+      });
+    }
+
+    setRedirectUri(redirectUri) {
+      return new Promise((resolve, reject) => {
+        if (typeof redirectUri === 'string') {
+          this._redirectUri = redirectUri;
+          resolve(this._redirectUri);
+        } else {
+          const error = new TypeError('`redirectUri` must be a string.');
+          this._log(error);
+          reject(error);
+        }
+      });
+    }
+
+    setDebug(debug) {
+      return new Promise((resolve, reject) => {
+        if (typeof debug === 'boolean') {
+          this._debug = debug;
+          resolve(this._debug);
+        } else {
+          const error = new TypeError('`debug` must be a boolean.');
+          this._log(error);
+          reject(error);
+        }
+      });
+    }
+
 
     requestMic() {
       return new Promise((resolve, reject) => {
@@ -46,7 +291,7 @@
               return resolve(stream);
         })}, (error) => {
           this._log('error', error);
-          this.trigger('error', error);
+          this.emit('error', error);
           return reject(error);
         });
       });
@@ -59,7 +304,7 @@
         if (!isMediaStream) {
           const error = new TypeError('Argument must be a `MediaStream` object.')
           this._log('error', error)
-          this.trigger('error', error);
+          this.emit('error', error);
           return reject(error);
         }
 
@@ -104,7 +349,7 @@
         if (!this._audioInput) {
           const error = new Error('No Media Stream connected.');
           this._log('error', error);
-          this.trigger('error', error);
+          this.emit('error', error);
           return reject(error);
         }
 
@@ -112,6 +357,7 @@
         this._leftChannel.length = this._rightChannel.length = 0;
         this._recordingLength = 0;
         this._log(`Recording started.`);
+        this.emit('recordStart');
 
         return resolve();
       });
@@ -120,6 +366,8 @@
     stopRecording() {
       return new Promise((resolve, reject) => {
         if (!this._isRecording) {
+          this.emit('recordStop');
+          this._log('Recording stopped.');
           return resolve();
         }
 
@@ -167,12 +415,17 @@
         }
 
         this._log(`Recording stopped.`);
+        this.emit('recordStop');
         return resolve(view);
       });
     }
 
     playBlob(blob) {
       return new Promise((resolve, reject) => {
+        if (!blob) {
+          reject();
+        }
+
         const objectUrl = URL.createObjectURL(blob);
         const audio = new Audio();
         audio.src = objectUrl;
@@ -191,11 +444,91 @@
         resolve();
       });
     }
+
+    sendAudio (dataView) {
+      return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        const url = 'https://access-alexa-na.amazon.com/v1/avs/speechrecognizer/recognize';
+
+        xhr.open('POST', url, true);
+        xhr.responseType = 'arraybuffer';
+        xhr.onload = (event) => {
+          console.log('RESPONSE', xhr.response);
+          const buffer = new Buffer(xhr.response);
+
+          const parsedMessage = httpMessageParser(buffer);
+
+          resolve(parsedMessage);
+        };
+
+        xhr.onerror = (error) => {
+          this._log(error);
+          reject(error);
+        };
+
+        const BOUNDARY = 'BOUNDARY1234';
+        const BOUNDARY_DASHES = '--';
+        const NEWLINE = '\r\n';
+        const METADATA_CONTENT_DISPOSITION = 'Content-Disposition: form-data; name="metadata"';
+        const METADATA_CONTENT_TYPE = 'Content-Type: application/json; charset=UTF-8';
+        const AUDIO_CONTENT_TYPE = 'Content-Type: audio/L16; rate=16000; channels=1';
+        const AUDIO_CONTENT_DISPOSITION = 'Content-Disposition: form-data; name="audio"';
+
+        xhr.setRequestHeader('Authorization', `Bearer ${this._token}`);
+        xhr.setRequestHeader('Content-Type', 'multipart/form-data; boundary=' + BOUNDARY);
+        const metadata = {
+          messageHeader: {},
+          messageBody: {
+            profile: 'alexa-close-talk',
+            locale: 'en-us',
+            format: 'audio/L16; rate=16000; channels=1'
+          }
+        };
+
+        const postDataStart = [
+          NEWLINE, BOUNDARY_DASHES, BOUNDARY, NEWLINE, METADATA_CONTENT_DISPOSITION, NEWLINE, METADATA_CONTENT_TYPE,
+          NEWLINE, NEWLINE, JSON.stringify(metadata), NEWLINE, BOUNDARY_DASHES, BOUNDARY, NEWLINE,
+          AUDIO_CONTENT_DISPOSITION, NEWLINE, AUDIO_CONTENT_TYPE, NEWLINE, NEWLINE
+        ].join('');
+
+        const postDataEnd = [NEWLINE, BOUNDARY_DASHES, BOUNDARY, BOUNDARY_DASHES, NEWLINE].join('');
+
+        const size = postDataStart.length + dataView.byteLength + postDataEnd.length;
+        const uint8Array = new Uint8Array(size);
+        let i = 0;
+
+        for (; i < postDataStart.length; i++) {
+          uint8Array[i] = postDataStart.charCodeAt(i) & 0xFF;
+        }
+
+        for (let j = 0; j < dataView.byteLength ; i++, j++) {
+          uint8Array[i] = dataView.getUint8(j);
+        }
+
+        for (let j = 0; j < postDataEnd.length; i++, j++) {
+          uint8Array[i] = postDataEnd.charCodeAt(j) & 0xFF;
+        }
+
+        const payload = uint8Array.buffer;
+
+        xhr.send(payload);
+      });
+    }
+
+    static get EventTypes() {
+      return {
+        LOG: 'log',
+        ERROR: 'error',
+        LOGIN: 'login',
+        RECORD_START: 'recordStart',
+        RECORD_STOP: 'recordStop'
+      };
+    }
   }
 
   class Helpers {
     /**
-     * @credit http://stackoverflow.com/a/26245260*
+     * @credit http://stackoverflow.com/a/26245260
      */
     static downsampleBuffer(buffer, inputSampleRate, outputSampleRate) {
       if (inputSampleRate === outputSampleRate) {
@@ -324,7 +657,7 @@
       }
     };
 
-    el.trigger = function(name /*, args */) {
+    el.emit = function(name /*, args */) {
       if (!callbacks[name] || !callbacks[name].length) {
         return;
       }
