@@ -284,6 +284,7 @@
 
     requestMic() {
       return new Promise((resolve, reject) => {
+        this._log('Requesting microphone.');
         navigator.getUserMedia({
             audio: true
         }, (stream) => {
@@ -312,7 +313,7 @@
         this._audioContext = new AudioContext();
         this._sampleRate = this._audioContext.sampleRate;
 
-        this._log(`Sample rate: ${this._sampleRate}`);
+        this._log(`Sample rate: ${this._sampleRate}.`);
 
         this._volumeNode = this._audioContext.createGain();
         this._audioInput = this._audioContext.createMediaStreamSource(stream);
@@ -439,7 +440,7 @@
           URL.revokeObjectUrl(objectUrl);
         };
 
-        this._log('Audio play start.');
+        this._log('Audio play started.');
         audio.play();
 
         resolve();
@@ -475,8 +476,6 @@
         const AUDIO_CONTENT_TYPE = 'Content-Type: audio/L16; rate=16000; channels=1';
         const AUDIO_CONTENT_DISPOSITION = 'Content-Disposition: form-data; name="audio"';
 
-        xhr.setRequestHeader('Authorization', `Bearer ${this._token}`);
-        xhr.setRequestHeader('Content-Type', 'multipart/form-data; boundary=' + BOUNDARY);
         const metadata = {
           messageHeader: {},
           messageBody: {
@@ -512,6 +511,8 @@
 
         const payload = uint8Array.buffer;
 
+        xhr.setRequestHeader('Authorization', `Bearer ${this._token}`);
+        xhr.setRequestHeader('Content-Type', 'multipart/form-data; boundary=' + BOUNDARY);
         xhr.send(payload);
       });
     }

@@ -6,7 +6,8 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node server.js",
-    "watch": "watchify index.js -o bundle.js -v -d -t [ babelify ]"
+    "watch": "watchify index.js -o index.bundle.js -v -d -t [ babelify ]",
+    "build-server": "browserify server.js -o server.bundle.js"
   },
   "author": "Miguel Mota <hello@miguelmota.com> (http://www.miguelmota.com/)",
   "license": "ISC",

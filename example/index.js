@@ -6,7 +6,7 @@ const avs = new AVS({
   clientSecret: '1e3a306483c78510d4cdeb08e0a522f7ec3c1629ae1d53c325bfc3e95d80c0d3',
   deviceId: 'test_device',
   deviceSerialNumber: 123,
-  redirectUri: 'https://localhost:9745/authresponse'
+  redirectUri: `https://${window.location.host}/authresponse`
 });
 
 const login = document.getElementById('login');
