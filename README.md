@@ -19,6 +19,12 @@ The audio recorded in this library is *mono channel, sampled at 16k Hz, and sign
 
 [http://lab.moogs.io/alexa-voice-service](http://lab.moogs.io/alexa-voice-service)
 
+# Install
+
+```javascript
+npm install alexa-voice-service
+```
+
 # Example
 
 View the full [example code](/example).
@@ -27,7 +33,7 @@ View the full [example code](/example).
 
 Most methods return a promise.
 
-```text
+```javascript
 AVS(options) - constructor
 
 options:
