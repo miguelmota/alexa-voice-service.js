@@ -32,6 +32,11 @@ AVS(options) - constructor
 
 options:
   debug - {boolean} logs to console
+  clientId - {string} AVS client id found in portal
+  clientSecret - {string} AVS client secret found in portal
+  deviceId - {string} AVS device Id found in portal
+  deviceSerialNumber - {number} serial number for this device (can be made up)
+  redirectUri - {string} redirect uri set in portal
 
 avs.login() -> promise(response);
 avs.promptUserLogin() -> promise();
