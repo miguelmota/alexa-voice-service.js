@@ -45,10 +45,13 @@ options:
   redirectUri - {string} redirect uri set in portal
 
 avs.login({responseType: 'code, token (default)', newWindow: false}) -> promise(response);
-avs.promptUserLogin() -> promise();
+avs.promptUserLogin() -> alias to login();
+avs.logout() -> promise();
 avs.getTokenFromUrl() -> promise(token);
 avs.getCodeFromUrl() -> promise(code);
 avs.getTokenFromCode(code) -> promise(response);
+avs.getToken() -> promise(token)
+avs.getRefreshToken() -> promise(refreshToken)
 
 avs.requestMic() -> promise(stream);
 avs.connectMediaStream(stream) -> promise;
@@ -66,6 +69,7 @@ identifiers:
   login - when user is logged in
   recordStart - when recording is started
   recordStop - when recording is stopped
+  tokenSet- when recording is stopped
 ```
 
 # TODO

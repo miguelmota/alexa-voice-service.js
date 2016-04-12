@@ -1,7 +1,6 @@
 (function(root) {
   'use strict';
-
-  const Buffer = require('buffer').Buffer;
+const Buffer = require('buffer').Buffer;
   const qs = require('qs');
   const httpMessageParser = require('http-message-parser');
 
@@ -9,8 +8,14 @@
     navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia;
   }
 
+  const AMAZON_ERROR_CODES = {
+   InvalidAccessTokenException: 'com.amazon.alexahttpproxy.exceptions.InvalidAccessTokenException'
+  };
+
   class AVS {
     constructor(options = {}) {
+      observable(this);
+
       this._bufferSize = 2048;
       this._inputChannels = 1;
       this._outputChannels = 1;
@@ -24,44 +29,46 @@
       this._volumeNode = null;
       this._debug = false;
       this._token = null;
+      this._refreshToken = null;
       this._clientId = null;
       this._deviceId= null;
       this._deviceSerialNumber = null;
       this._redirectUri = null;
 
-      if (options.token) {
-        this.setToken(options.token);
-      }
+      // Running async to let user event handlers get bound.
+      setTimeout(() => {
+        if (options.token) {
+          this.setToken(options.token);
+        }
 
-      if (options.refreshToken) {
-        this.setRefreshToken(options.refreshToken);
-      }
+        if (options.refreshToken) {
+          this.setRefreshToken(options.refreshToken);
+        }
 
-      if (options.clientId) {
-        this.setClientId(options.clientId);
-      }
+        if (options.clientId) {
+          this.setClientId(options.clientId);
+        }
 
-      if (options.clientSecret) {
-        this.setClientSecret(options.clientSecret);
-      }
+        if (options.clientSecret) {
+          this.setClientSecret(options.clientSecret);
+        }
 
-      if (options.deviceId) {
-        this.setDeviceId(options.deviceId);
-      }
+        if (options.deviceId) {
+          this.setDeviceId(options.deviceId);
+        }
 
-      if (options.deviceSerialNumber) {
-        this.setDeviceSerialNumber(options.deviceSerialNumber);
-      }
+        if (options.deviceSerialNumber) {
+          this.setDeviceSerialNumber(options.deviceSerialNumber);
+        }
 
-      if (options.redirectUri) {
-        this.setRedirectUri(options.redirectUri);
-      }
+        if (options.redirectUri) {
+          this.setRedirectUri(options.redirectUri);
+        }
 
-      if (options.debug) {
-        this.setDebug(options.debug);
-      }
-
-      observable(this);
+        if (options.debug) {
+          this.setDebug(options.debug);
+        }
+      }, 0);
     }
 
     _log(type, message) {
@@ -78,9 +85,16 @@
     }
 
     login(options = {}) {
+      return this.promptUserLogin(options);
+    }
+
+    logout() {
       return new Promise((resolve, reject) => {
-        return this.getTokenFromUrl()
-        .catch(() => this.promptUserLogin(options))
+        this._token = null;
+        this._refreshToken = null;
+        this.emit('logout');
+        this._log('Loggedout');
+        resolve();
       });
     }
 
@@ -206,6 +220,10 @@
           this.emit('login');
           this._log('Logged in.');
 
+          if (refreshToken) {
+            this.setRefreshToken(refreshToken);
+          }
+
           return resolve(token);
         }
 
@@ -230,6 +248,8 @@
       return new Promise((resolve, reject) => {
         if (typeof token === 'string') {
           this._token = token;
+          this.emit('tokenSet');
+          this._log('Token set.');
           resolve(this._token);
         } else {
           const error = new TypeError('`token` must be a string.');
@@ -330,6 +350,29 @@
       });
     }
 
+    getToken() {
+      return new Promise((resolve, reject) => {
+        const token = this._token;
+
+        if (token) {
+          return resolve(token);
+        }
+
+        return reject();
+      });
+    }
+
+    getRefreshToken() {
+      return new Promise((resolve, reject) => {
+        const refreshToken = this._refreshToken;
+
+        if (refreshToken) {
+          return resolve(refreshToken);
+        }
+
+        return reject();
+      });
+    }
 
     requestMic() {
       return new Promise((resolve, reject) => {
@@ -505,11 +548,33 @@
         xhr.responseType = 'arraybuffer';
         xhr.onload = (event) => {
           console.log('RESPONSE', xhr.response);
+
           const buffer = new Buffer(xhr.response);
 
-          const parsedMessage = httpMessageParser(buffer);
+          if (xhr.status === 200) {
+            const parsedMessage = httpMessageParser(buffer);
+            resolve(parsedMessage);
+          } else {
+            let error = new Error('An error occured with request.');
+            let response = {};
 
-          resolve(parsedMessage);
+            try {
+              response = JSON.parse(Helpers.arrayBufferToString(buffer));
+            } catch(err) {
+              error = err;
+            }
+
+            if (response.error instanceof Object) {
+              if (response.error.code) {
+                // refresh token?
+              }
+
+              error = response.error.message;
+              this.emit('error', error);
+            }
+
+            return reject(error);
+          }
         };
 
         xhr.onerror = (error) => {
@@ -571,8 +636,10 @@
         LOG: 'log',
         ERROR: 'error',
         LOGIN: 'login',
+        LOGOUT: 'logout',
         RECORD_START: 'recordStart',
-        RECORD_STOP: 'recordStop'
+        RECORD_STOP: 'recordStop',
+        TOKEN_SET: 'tokenSet'
       };
     }
   }
@@ -662,6 +729,13 @@
       for (let i = 0; i < length; i++){
         view.setUint8(offset + i, string.charCodeAt(i));
       }
+    }
+
+    /**
+     * @credit https://developers.google.com/web/updates/2012/06/How-to-convert-ArrayBuffer-to-and-from-String?hl=en
+     */
+    static arrayBufferToString(buffer) {
+      return String.fromCharCode.apply(null, new Uint16Array(buffer));
     }
   }
 

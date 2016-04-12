@@ -8,8 +8,9 @@ const avs = new AVS({
   redirectUri: `https://${window.location.host}/authresponse`
 });
 
-avs.on(AVS.EventTypes.LOGIN, () => {
+avs.on(AVS.EventTypes.TOKEN_SET, () => {
   login.disabled = true;
+  logout.disabled = false;
   start.disabled = false;
   stop.disabled = true;
 });
@@ -24,6 +25,13 @@ avs.on(AVS.EventTypes.RECORD_STOP, () => {
   stop.disabled = true;
 });
 
+avs.on(AVS.EventTypes.LOGOUT, () => {
+  login.disabled = false;
+  logout.disabled = true;
+  start.disabled = true;
+  stop.disabled = true;
+});
+
 avs.on(AVS.EventTypes.LOG, (message) => {
   logOutput.innerHTML += `<li>LOG: ${message}</li>`;
 });
@@ -32,20 +40,36 @@ avs.on(AVS.EventTypes.ERROR, (error) => {
   logOutput.innerHTML += `<li>ERROR: ${error}</li>`;
 });
 
-
 const login = document.getElementById('login');
+const logout = document.getElementById('logout');
 const logOutput = document.getElementById('log');
 const start = document.getElementById('start');
 const stop = document.getElementById('stop');
 
 avs.getTokenFromUrl()
+.then(() => avs.getToken())
+.then(token => localStorage.setItem('token', token))
 .then(() => avs.requestMic())
-.catch(() => {});
+.catch(() => {
+  const cachedToken = localStorage.getItem('token');
+
+  if (cachedToken) {
+    avs.setToken(cachedToken);
+    return avs.requestMic();
+  }
+});
 
 login.addEventListener('click', (event) => {
   avs.login()
-  .then(response => {
-    avs.requestMic();
+  .then(() => avs.requestMic())
+  .catch(() => {});
+});
+
+logout.addEventListener('click', () => {
+  avs.logout()
+  .then(() => {
+    localStorage.removeItem('token');
+    window.location.hash = '';
   });
 });
 
