@@ -1,6 +1,7 @@
-(function(root) {
+(function() {
   'use strict';
-const Buffer = require('buffer').Buffer;
+
+  const Buffer = require('buffer').Buffer;
   const qs = require('qs');
   const httpMessageParser = require('http-message-parser');
 
@@ -36,6 +37,7 @@ const Buffer = require('buffer').Buffer;
       this._deviceId= null;
       this._deviceSerialNumber = null;
       this._redirectUri = null;
+      this._audioQueue = [];
 
       if (options.token) {
         this.setToken(options.token);
@@ -871,12 +873,16 @@ const Buffer = require('buffer').Buffer;
       exports = module.exports = AVS;
     }
     exports.AVS = AVS;
-  } else if (typeof define === 'function' && define.amd) {
+  }
+
+  if (typeof define === 'function' && define.amd) {
     define([], function() {
       return AVS;
     });
-  } else {
-    root.AVS = AVS;
   }
 
-})(this);
+  if (typeof window === 'object') {
+    window.AVS = AVS;
+  }
+
+})();

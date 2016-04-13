@@ -29,7 +29,41 @@ npm install alexa-voice-service
 
 # Example
 
-View the full [example code](/example).
+Follow these steps to run demo locally:
+
+1. Git clone this repo
+
+  ```bash
+  git clone git@github.com:miguelmota/alexa-voice-service.js.git
+
+  cd alexa-voice-service.js/example/
+  ```bash
+
+2. Install NPM Modules
+
+  ```bash
+  npm install
+  ```bash
+
+3. Run HTTPS server
+
+  ```bash
+  npm start
+  ```bash
+
+4. Go to browser url.
+
+  ```bash
+  open https://localhost:9745
+  ```bash
+
+# Usage
+
+```bash
+const AVS = require('alexa-voice-service');
+
+const avs = new AVS(options);
+```
 
 # Documentation
 
