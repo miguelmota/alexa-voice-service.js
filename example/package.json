@@ -10,7 +10,7 @@
     "build-server": "browserify server.js -o server.bundle.js"
   },
   "author": "Miguel Mota <hello@miguelmota.com> (http://www.miguelmota.com/)",
-  "license": "ISC",
+  "license": "MIT",
   "dependencies": {
     "body-parser": "^1.15.0",
     "cors": "^2.7.1",

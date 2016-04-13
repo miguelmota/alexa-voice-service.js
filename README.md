@@ -67,14 +67,16 @@ avs.sendAudio(dataView) -> promise(response);
 
 avs.on(identifier, callback)
 
-identifiers:
-  log - when a log occurs
-  error - when an error occurs
-  login - when user is logged in
-  recordStart - when recording is started
-  recordStop - when recording is stopped
-  tokenSet- when token is set
-  refreshTokenSet- when refresh token is set
+identifiers (found under AVS.EventTypes object)
+  LOG - when a log occurs
+  ERROR - when an error occurs
+  LOGIN - when user is logged in
+  RECORD_START - when recording is started
+  RECORD_STOP - when recording is stopped
+  TOKEN_SET - when token is set
+  REFRESH_TOKEN_SET - when refresh token is set
+
+example: avs.on(AVS.EventTypes.LOG, callback)
 ```
 
 # TODO
