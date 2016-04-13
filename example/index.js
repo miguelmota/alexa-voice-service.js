@@ -1,4 +1,5 @@
 const AVS = require('../avs');
+const player = AVS.Player;
 
 const avs = new AVS({
   debug: true,
