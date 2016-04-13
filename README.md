@@ -43,19 +43,19 @@ Follow these steps to run demo locally:
 
   ```bash
   npm install
-  ```bash
+  ```
 
 3. Run HTTPS server
 
   ```bash
   npm start
-  ```bash
+  ```
 
 4. Go to browser url.
 
   ```bash
   open https://localhost:9745
-  ```bash
+  ```
 
 # Usage
 
