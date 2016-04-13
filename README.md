@@ -2,7 +2,7 @@
 
 > Library for interacting with [Alexa Voice Service (AVS)](https://developer.amazon.com/public/solutions/alexa/alexa-voice-service) in the browser.
 
-NOTE: THIS LIBRARY IS STILL IN DEVELOPMENT. Expected Alpha version in May.
+*NOTE: THIS LIBRARY IS STILL IN DEVELOPMENT. Expected Alpha version in May.*
 
 Things you can do with this library now:
 
@@ -19,7 +19,7 @@ The audio recorded in this library is *mono channel, sampled at 16k Hz, and sign
 
 # Demo
 
-[http://lab.moogs.io/alexa-voice-service](http://lab.moogs.io/alexa-voice-service)
+**[http://lab.moogs.io/alexa-voice-service](http://lab.moogs.io/alexa-voice-service)**
 
 # Install
 
@@ -59,7 +59,7 @@ Follow these steps to run demo locally:
 
 # Usage
 
-```bash
+``javascript`
 const AVS = require('alexa-voice-service');
 
 const avs = new AVS(options);
