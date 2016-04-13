@@ -7,10 +7,10 @@ NOTE: THIS LIBRARY IS STILL IN DEVELOPMENT.
 Things you can do with this library now:
 
 - Login with Amazon and get access token
+- Get access token and refresh token from code response type
 - Get access token from refresh token
-- Get access token from code response type
-- Request microphone
-- Record user audio
+- Request user microphone
+- Record user audio using microphone
 - Send user audio to AVS
 - Parse response from AVS
 - Play MP3 response from AVS
