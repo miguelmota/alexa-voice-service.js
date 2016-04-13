@@ -50,6 +50,8 @@ avs.logout() -> promise();
 avs.getTokenFromUrl() -> promise(token);
 avs.getCodeFromUrl() -> promise(code);
 avs.getTokenFromCode(code) -> promise(response);
+avs.getTokenFromRefreshToken(refreshToken) -> promise(token)
+avs.refreshToken() -> promise({token, refreshToken})
 avs.getToken() -> promise(token)
 avs.getRefreshToken() -> promise(refreshToken)
 
@@ -69,7 +71,8 @@ identifiers:
   login - when user is logged in
   recordStart - when recording is started
   recordStop - when recording is stopped
-  tokenSet- when recording is stopped
+  tokenSet- when token is set
+  refreshTokenSet- when refresh token is set
 ```
 
 # TODO

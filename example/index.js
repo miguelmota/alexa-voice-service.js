@@ -46,6 +46,19 @@ const logOutput = document.getElementById('log');
 const start = document.getElementById('start');
 const stop = document.getElementById('stop');
 
+/*
+// If using client secret
+avs.getCodeFromUrl()
+ .then(code => avs.getTokenFromCode(code))
+.then(token => localStorage.setItem('token', token))
+.then(refreshToken => localStorage.setItem('refreshToken', refreshToken))
+.then(() => avs.requestMic())
+.then(() => avs.refreshToken())
+.catch(() => {
+
+});
+*/
+
 avs.getTokenFromUrl()
 .then(() => avs.getToken())
 .then(token => localStorage.setItem('token', token))
@@ -63,6 +76,13 @@ login.addEventListener('click', (event) => {
   avs.login()
   .then(() => avs.requestMic())
   .catch(() => {});
+
+  /*
+  // If using client secret
+  avs.login({responseType: 'code'})
+  .then(() => avs.requestMic())
+  .catch(() => {});
+  */
 });
 
 logout.addEventListener('click', () => {

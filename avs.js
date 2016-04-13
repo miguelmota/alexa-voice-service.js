@@ -5,7 +5,8 @@ const Buffer = require('buffer').Buffer;
   const httpMessageParser = require('http-message-parser');
 
   if (!navigator.getUserMedia) {
-    navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia;
+    navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia ||
+      navigator.mozGetUserMedia || navigator.msGetUserMedia;
   }
 
   const AMAZON_ERROR_CODES = {
@@ -31,44 +32,42 @@ const Buffer = require('buffer').Buffer;
       this._token = null;
       this._refreshToken = null;
       this._clientId = null;
+      this._clientSecret = null;
       this._deviceId= null;
       this._deviceSerialNumber = null;
       this._redirectUri = null;
 
-      // Running async to let user event handlers get bound.
-      setTimeout(() => {
-        if (options.token) {
-          this.setToken(options.token);
-        }
+      if (options.token) {
+        this.setToken(options.token);
+      }
 
-        if (options.refreshToken) {
-          this.setRefreshToken(options.refreshToken);
-        }
+      if (options.refreshToken) {
+        this.setRefreshToken(options.refreshToken);
+      }
 
-        if (options.clientId) {
-          this.setClientId(options.clientId);
-        }
+      if (options.clientId) {
+        this.setClientId(options.clientId);
+      }
 
-        if (options.clientSecret) {
-          this.setClientSecret(options.clientSecret);
-        }
+      if (options.clientSecret) {
+        this.setClientSecret(options.clientSecret);
+      }
 
-        if (options.deviceId) {
-          this.setDeviceId(options.deviceId);
-        }
+      if (options.deviceId) {
+        this.setDeviceId(options.deviceId);
+      }
 
-        if (options.deviceSerialNumber) {
-          this.setDeviceSerialNumber(options.deviceSerialNumber);
-        }
+      if (options.deviceSerialNumber) {
+        this.setDeviceSerialNumber(options.deviceSerialNumber);
+      }
 
-        if (options.redirectUri) {
-          this.setRedirectUri(options.redirectUri);
-        }
+      if (options.redirectUri) {
+        this.setRedirectUri(options.redirectUri);
+      }
 
-        if (options.debug) {
-          this.setDebug(options.debug);
-        }
-      }, 0);
+      if (options.debug) {
+        this.setDebug(options.debug);
+      }
     }
 
     _log(type, message) {
@@ -77,7 +76,9 @@ const Buffer = require('buffer').Buffer;
         type = 'log';
       }
 
-      this.emit('log', message);
+      setTimeout(() => {
+        this.emit('log', message);
+      }, 0);
 
       if (this._debug) {
         console[type](message);
@@ -100,7 +101,7 @@ const Buffer = require('buffer').Buffer;
 
     promptUserLogin(options = {responseType: 'token', newWindow: false}) {
       return new Promise((resolve, reject) => {
-        if (typeof options.reponseType === 'undefined') {
+        if (typeof options.responseType === 'undefined') {
           options.responseType = 'token';
         }
 
@@ -199,6 +200,60 @@ const Buffer = require('buffer').Buffer;
       });
     }
 
+    refreshToken() {
+      return this.getTokenFromRefreshToken(this._refreshToken)
+              .then(() => {
+                return {
+                  token: this._token,
+                  refreshToken: this._refreshToken
+                };
+              });
+    }
+
+    getTokenFromRefreshToken(refreshToken = this._refreshToken) {
+      return new Promise((resolve, reject) => {
+        if (typeof refreshToken !== 'string') {
+          const error = new Error('`refreshToken` must a string.');
+          this._log(error);
+          return reject(error);
+        }
+
+        const grantType = 'refresh_token';
+        const postData = `grant_type=${grantType}&refresh_token=${refreshToken}&client_id=${this._clientId}&client_secret=${this._clientSecret}&redirect_uri=${encodeURIComponent(this._redirectUri)}`;
+        const url = 'https://api.amazon.com/auth/o2/token';
+        const xhr = new XMLHttpRequest();
+
+        xhr.open('POST', url, true);
+        xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded;charset=UTF-8');
+        xhr.responseType = 'json';
+        xhr.onload = (event) => {
+          const response = xhr.response;
+
+          if (response.error) {
+            const error = response.error.message;
+            this.emit('error', error);
+
+            return reject(error);
+          } else  {
+            const token = response.access_token;
+            const refreshToken = response.refresh_token;
+
+            this.setToken(token);
+            this.setRefreshToken(refreshToken);
+
+            return resolve(token);
+          }
+        };
+
+        xhr.onerror = (error) => {
+          this._log(error);
+          reject(error);
+        };
+
+        xhr.send(postData);
+      });
+    }
+
     getTokenFromUrl() {
       return new Promise((resolve, reject) => {
         let queryString = window.location.href.split('?#');
@@ -263,6 +318,8 @@ const Buffer = require('buffer').Buffer;
       return new Promise((resolve, reject) => {
         if (typeof refreshToken === 'string') {
           this._refreshToken = refreshToken;
+          this.emit('refreshTokenSet');
+          this._log('Refresh token set.');
           resolve(this._refreshToken);
         } else {
           const error = new TypeError('`refreshToken` must be a string.');
@@ -558,10 +615,14 @@ const Buffer = require('buffer').Buffer;
             let error = new Error('An error occured with request.');
             let response = {};
 
-            try {
-              response = JSON.parse(Helpers.arrayBufferToString(buffer));
-            } catch(err) {
-              error = err;
+            if (!xhr.response.byteLength) {
+              error = new Error('Empty response.');
+            } else {
+              try {
+                response = JSON.parse(Helpers.arrayBufferToString(buffer));
+              } catch(err) {
+                error = err;
+              }
             }
 
             if (response.error instanceof Object) {
@@ -570,9 +631,9 @@ const Buffer = require('buffer').Buffer;
               }
 
               error = response.error.message;
-              this.emit('error', error);
             }
 
+            this.emit('error', error);
             return reject(error);
           }
         };
@@ -639,7 +700,8 @@ const Buffer = require('buffer').Buffer;
         LOGOUT: 'logout',
         RECORD_START: 'recordStart',
         RECORD_STOP: 'recordStop',
-        TOKEN_SET: 'tokenSet'
+        TOKEN_SET: 'tokenSet',
+        REFRESH_TOKEN_SET: 'refreshTokenSet'
       };
     }
   }
