@@ -71,6 +71,7 @@ identifiers (found under AVS.EventTypes object)
   LOG - when a log occurs
   ERROR - when an error occurs
   LOGIN - when user is logged in
+  LOGOUT - when user is logged out
   RECORD_START - when recording is started
   RECORD_STOP - when recording is stopped
   TOKEN_SET - when token is set
