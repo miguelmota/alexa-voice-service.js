@@ -2,7 +2,7 @@
 
 > Library for interacting with [Alexa Voice Service (AVS)](https://developer.amazon.com/public/solutions/alexa/alexa-voice-service) in the browser.
 
-NOTE: THIS LIBRARY IS STILL IN DEVELOPMENT.
+NOTE: THIS LIBRARY IS STILL IN DEVELOPMENT. Expected Alpha version in May.
 
 Things you can do with this library now:
 
@@ -37,7 +37,7 @@ Follow these steps to run demo locally:
   git clone git@github.com:miguelmota/alexa-voice-service.js.git
 
   cd alexa-voice-service.js/example/
-  ```bash
+  ```
 
 2. Install NPM Modules
 
