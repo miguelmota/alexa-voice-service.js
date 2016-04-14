@@ -59,7 +59,7 @@ Follow these steps to run demo locally:
 
 # Usage
 
-``javascript
+```javascript
 const AVS = require('alexa-voice-service');
 
 const avs = new AVS(options);
