@@ -10,8 +10,8 @@ const avs = new AVS({
 });
 
 avs.on(AVS.EventTypes.TOKEN_SET, () => {
-  login.disabled = true;
-  logout.disabled = false;
+  loginBtn.disabled = true;
+  logoutBtn.disabled = false;
   start.disabled = false;
   stop.disabled = true;
 });
@@ -27,10 +27,15 @@ avs.on(AVS.EventTypes.RECORD_STOP, () => {
 });
 
 avs.on(AVS.EventTypes.LOGOUT, () => {
-  login.disabled = false;
-  logout.disabled = true;
+  loginBtn.disabled = false;
+  logoutBtn.disabled = true;
   start.disabled = true;
   stop.disabled = true;
+});
+
+avs.on(AVS.EventTypes.TOKEN_INVALID, () => {
+  avs.logout()
+  .then(login)
 });
 
 avs.on(AVS.EventTypes.LOG, (message) => {
@@ -41,8 +46,8 @@ avs.on(AVS.EventTypes.ERROR, (error) => {
   logOutput.innerHTML += `<li>ERROR: ${error}</li>`;
 });
 
-const login = document.getElementById('login');
-const logout = document.getElementById('logout');
+const loginBtn = document.getElementById('login');
+const logoutBtn = document.getElementById('logout');
 const logOutput = document.getElementById('log');
 const start = document.getElementById('start');
 const stop = document.getElementById('stop');
@@ -73,8 +78,10 @@ avs.getTokenFromUrl()
   }
 });
 
-login.addEventListener('click', (event) => {
-  avs.login()
+loginBtn.addEventListener('click', login);
+
+function login(event) {
+  return avs.login()
   .then(() => avs.requestMic())
   .catch(() => {});
 
@@ -84,15 +91,17 @@ login.addEventListener('click', (event) => {
   .then(() => avs.requestMic())
   .catch(() => {});
   */
-});
+}
 
-logout.addEventListener('click', () => {
-  avs.logout()
+logoutBtn.addEventListener('click', logout);
+
+function logout() {
+  return avs.logout()
   .then(() => {
     localStorage.removeItem('token');
     window.location.hash = '';
   });
-});
+}
 
 start.addEventListener('click', () => {
   avs.startRecording();
@@ -128,6 +137,9 @@ stop.addEventListener('click', () => {
       }
 
     })
+    .catch(error => {
+      console.error(error);
+    });
   });
 });
 

@@ -11,7 +11,7 @@
   }
 
   const AMAZON_ERROR_CODES = {
-   InvalidAccessTokenException: 'com.amazon.alexahttpproxy.exceptions.InvalidAccessTokenException'
+    InvalidAccessTokenException: 'com.amazon.alexahttpproxy.exceptions.InvalidAccessTokenException'
   };
 
   class AVS {
@@ -79,7 +79,7 @@
       }
 
       setTimeout(() => {
-        this.emit('log', message);
+        this.emit(AVS.EventTypes.LOG, message);
       }, 0);
 
       if (this._debug) {
@@ -95,8 +95,8 @@
       return new Promise((resolve, reject) => {
         this._token = null;
         this._refreshToken = null;
-        this.emit('logout');
-        this._log('Loggedout');
+        this.emit(AVS.EventTypes.LOGOUT);
+        this._log('Logged out');
         resolve();
       });
     }
@@ -188,7 +188,7 @@
           this.setToken(token)
           this.setRefreshToken(refreshToken)
 
-          this.emit('login');
+          this.emit(AVS.EventTypes.LOGIN);
           this._log('Logged in.');
           resolve(response);
         };
@@ -233,7 +233,7 @@
 
           if (response.error) {
             const error = response.error.message;
-            this.emit('error', error);
+            this.emit(AVS.EventTypes.ERROR, error);
 
             return reject(error);
           } else  {
@@ -274,7 +274,7 @@
 
         if (token) {
           this.setToken(token)
-          this.emit('login');
+          this.emit(AVS.EventTypes.LOGIN);
           this._log('Logged in.');
 
           if (refreshToken) {
@@ -305,7 +305,7 @@
       return new Promise((resolve, reject) => {
         if (typeof token === 'string') {
           this._token = token;
-          this.emit('tokenSet');
+          this.emit(AVS.EventTypes.TOKEN_SET);
           this._log('Token set.');
           resolve(this._token);
         } else {
@@ -320,7 +320,7 @@
       return new Promise((resolve, reject) => {
         if (typeof refreshToken === 'string') {
           this._refreshToken = refreshToken;
-          this.emit('refreshTokenSet');
+          this.emit(AVS.EventTypes.REFRESH_TOKEN_SET);
           this._log('Refresh token set.');
           resolve(this._refreshToken);
         } else {
@@ -444,7 +444,7 @@
               return resolve(stream);
         })}, (error) => {
           this._log('error', error);
-          this.emit('error', error);
+          this.emit(AVS.EventTypes.ERROR, error);
           return reject(error);
         });
       });
@@ -457,7 +457,7 @@
         if (!isMediaStream) {
           const error = new TypeError('Argument must be a `MediaStream` object.')
           this._log('error', error)
-          this.emit('error', error);
+          this.emit(AVS.EventTypes.ERROR, error);
           return reject(error);
         }
 
@@ -502,7 +502,7 @@
         if (!this._audioInput) {
           const error = new Error('No Media Stream connected.');
           this._log('error', error);
-          this.emit('error', error);
+          this.emit(AVS.EventTypes.ERROR, error);
           return reject(error);
         }
 
@@ -510,7 +510,7 @@
         this._leftChannel.length = this._rightChannel.length = 0;
         this._recordingLength = 0;
         this._log(`Recording started.`);
-        this.emit('recordStart');
+        this.emit(AVS.EventTypes.RECORD_START);
 
         return resolve();
       });
@@ -519,7 +519,7 @@
     stopRecording() {
       return new Promise((resolve, reject) => {
         if (!this._isRecording) {
-          this.emit('recordStop');
+          this.emit(AVS.EventTypes.RECORD_STOP);
           this._log('Recording stopped.');
           return resolve();
         }
@@ -568,7 +568,7 @@
         }
 
         this._log(`Recording stopped.`);
-        this.emit('recordStop');
+        this.emit(AVS.EventTypes.RECORD_STOP);
         return resolve(view);
       });
     }
@@ -628,14 +628,14 @@
             }
 
             if (response.error instanceof Object) {
-              if (response.error.code) {
-                // refresh token?
+              if (response.error.code === AMAZON_ERROR_CODES.InvalidAccessTokenException) {
+                this.emit(AVS.EventTypes.TOKEN_INVALID);
               }
 
               error = response.error.message;
             }
 
-            this.emit('error', error);
+            this.emit(AVS.EventTypes.ERROR, error);
             return reject(error);
           }
         };
@@ -703,7 +703,8 @@
         RECORD_START: 'recordStart',
         RECORD_STOP: 'recordStop',
         TOKEN_SET: 'tokenSet',
-        REFRESH_TOKEN_SET: 'refreshTokenSet'
+        REFRESH_TOKEN_SET: 'refreshTokenSet',
+        TOKEN_INVALID: 'tokenInvalid'
       };
     }
   }
