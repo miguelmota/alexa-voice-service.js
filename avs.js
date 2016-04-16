@@ -5,11 +5,6 @@
   const qs = require('qs');
   const httpMessageParser = require('http-message-parser');
 
-  if (!navigator.getUserMedia) {
-    navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia ||
-      navigator.mozGetUserMedia || navigator.msGetUserMedia;
-  }
-
   const AMAZON_ERROR_CODES = {
     InvalidAccessTokenException: 'com.amazon.alexahttpproxy.exceptions.InvalidAccessTokenException'
   };
@@ -436,6 +431,12 @@
     requestMic() {
       return new Promise((resolve, reject) => {
         this._log('Requesting microphone.');
+        // Ensure that the file can be loaded in environments where navigator is not defined (node servers)
+        if (!navigator.getUserMedia) {
+          navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia ||
+            navigator.mozGetUserMedia || navigator.msGetUserMedia;
+        }
+
         navigator.getUserMedia({
             audio: true
         }, (stream) => {
