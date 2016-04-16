@@ -1,16 +1,30 @@
+'use strict';
+
+var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol ? "symbol" : typeof obj; };
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
 (function () {
   'use strict';
 
-  const Buffer = require('buffer').Buffer;
-  const qs = require('qs');
-  const httpMessageParser = require('http-message-parser');
+  var Buffer = require('buffer').Buffer;
+  var qs = require('qs');
+  var httpMessageParser = require('http-message-parser');
 
-  const AMAZON_ERROR_CODES = {
+  var AMAZON_ERROR_CODES = {
     InvalidAccessTokenException: 'com.amazon.alexahttpproxy.exceptions.InvalidAccessTokenException'
   };
 
-  class AVS {
-    constructor(options = {}) {
+  var AVS = function () {
+    function AVS() {
+      var options = arguments.length <= 0 || arguments[0] === undefined ? {} : arguments[0];
+
+      _classCallCheck(this, AVS);
+
       observable(this);
 
       this._bufferSize = 2048;
@@ -67,741 +81,843 @@
       }
     }
 
-    _log(type, message) {
-      if (type && !message) {
-        message = type;
-        type = 'log';
+    _createClass(AVS, [{
+      key: '_log',
+      value: function _log(type, message) {
+        var _this = this;
+
+        if (type && !message) {
+          message = type;
+          type = 'log';
+        }
+
+        setTimeout(function () {
+          _this.emit(AVS.EventTypes.LOG, message);
+        }, 0);
+
+        if (this._debug) {
+          console[type](message);
+        }
       }
+    }, {
+      key: 'login',
+      value: function login() {
+        var options = arguments.length <= 0 || arguments[0] === undefined ? {} : arguments[0];
 
-      setTimeout(() => {
-        this.emit(AVS.EventTypes.LOG, message);
-      }, 0);
-
-      if (this._debug) {
-        console[type](message);
+        return this.promptUserLogin(options);
       }
-    }
+    }, {
+      key: 'logout',
+      value: function logout() {
+        var _this2 = this;
 
-    login(options = {}) {
-      return this.promptUserLogin(options);
-    }
+        return new Promise(function (resolve, reject) {
+          _this2._token = null;
+          _this2._refreshToken = null;
+          _this2.emit(AVS.EventTypes.LOGOUT);
+          _this2._log('Logged out');
+          resolve();
+        });
+      }
+    }, {
+      key: 'promptUserLogin',
+      value: function promptUserLogin() {
+        var _this3 = this;
 
-    logout() {
-      return new Promise((resolve, reject) => {
-        this._token = null;
-        this._refreshToken = null;
-        this.emit(AVS.EventTypes.LOGOUT);
-        this._log('Logged out');
-        resolve();
-      });
-    }
+        var options = arguments.length <= 0 || arguments[0] === undefined ? { responseType: 'token', newWindow: false } : arguments[0];
 
-    promptUserLogin(options = { responseType: 'token', newWindow: false }) {
-      return new Promise((resolve, reject) => {
-        if (typeof options.responseType === 'undefined') {
-          options.responseType = 'token';
-        }
+        return new Promise(function (resolve, reject) {
+          if (typeof options.responseType === 'undefined') {
+            options.responseType = 'token';
+          }
 
-        if (typeof options.responseType !== 'string') {
-          const error = new Error('`responseType` must a string.');
-          this._log(error);
-          return reject(error);
-        }
+          if (typeof options.responseType !== 'string') {
+            var error = new Error('`responseType` must a string.');
+            _this3._log(error);
+            return reject(error);
+          }
 
-        const newWindow = !!options.newWindow;
+          var newWindow = !!options.newWindow;
 
-        const responseType = options.responseType;
+          var responseType = options.responseType;
 
-        if (!(responseType === 'code' || responseType === 'token')) {
-          const error = new Error('`responseType` must be either `code` or `token`.');
-          this._log(error);
-          return reject(error);
-        }
+          if (!(responseType === 'code' || responseType === 'token')) {
+            var _error = new Error('`responseType` must be either `code` or `token`.');
+            _this3._log(_error);
+            return reject(_error);
+          }
 
-        const scope = 'alexa:all';
-        const scopeData = {
-          [scope]: {
-            productID: this._deviceId,
+          var scope = 'alexa:all';
+          var scopeData = _defineProperty({}, scope, {
+            productID: _this3._deviceId,
             productInstanceAttributes: {
-              deviceSerialNumber: this._deviceSerialNumber
+              deviceSerialNumber: _this3._deviceSerialNumber
             }
-          }
-        };
+          });
 
-        const authUrl = `https://www.amazon.com/ap/oa?client_id=${ this._clientId }&scope=${ encodeURIComponent(scope) }&scope_data=${ encodeURIComponent(JSON.stringify(scopeData)) }&response_type=${ responseType }&redirect_uri=${ encodeURI(this._redirectUri) }`;
+          var authUrl = 'https://www.amazon.com/ap/oa?client_id=' + _this3._clientId + '&scope=' + encodeURIComponent(scope) + '&scope_data=' + encodeURIComponent(JSON.stringify(scopeData)) + '&response_type=' + responseType + '&redirect_uri=' + encodeURI(_this3._redirectUri);
 
-        if (newWindow) {
-          window.open(authUrl);
-        } else {
-          window.location.href = authUrl;
-        }
-      });
-    }
-
-    getTokenFromCode(code) {
-      return new Promise((resolve, reject) => {
-        if (typeof code !== 'string') {
-          const error = new TypeError('`code` must be a string.');
-          this._log(error);
-          return reject(error);
-        }
-
-        const grantType = 'authorization_code';
-        const postData = `grant_type=${ grantType }&code=${ code }&client_id=${ this._clientId }&client_secret=${ this._clientSecret }&redirect_uri=${ encodeURIComponent(this._redirectUri) }`;
-        const url = 'https://api.amazon.com/auth/o2/token';
-
-        const xhr = new XMLHttpRequest();
-
-        xhr.open('POST', url, true);
-        xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded;charset=UTF-8');
-        xhr.onload = event => {
-          console.log('RESPONSE', xhr.response);
-
-          let response = xhr.response;
-
-          try {
-            response = JSON.parse(xhr.response);
-          } catch (error) {
-            this._log(error);
-            return reject(error);
-          }
-
-          const isObject = response instanceof Object;
-          const errorDescription = isObject && response.error_description;
-
-          if (errorDescription) {
-            const error = new Error(errorDescription);
-            this._log(error);
-            return reject(error);
-          }
-
-          const token = response.access_token;
-          const refreshToken = response.refresh_token;
-          const tokenType = response.token_type;
-          const expiresIn = response.expiresIn;
-
-          this.setToken(token);
-          this.setRefreshToken(refreshToken);
-
-          this.emit(AVS.EventTypes.LOGIN);
-          this._log('Logged in.');
-          resolve(response);
-        };
-
-        xhr.onerror = error => {
-          this._log(error);
-          reject(error);
-        };
-
-        xhr.send(postData);
-      });
-    }
-
-    refreshToken() {
-      return this.getTokenFromRefreshToken(this._refreshToken).then(() => {
-        return {
-          token: this._token,
-          refreshToken: this._refreshToken
-        };
-      });
-    }
-
-    getTokenFromRefreshToken(refreshToken = this._refreshToken) {
-      return new Promise((resolve, reject) => {
-        if (typeof refreshToken !== 'string') {
-          const error = new Error('`refreshToken` must a string.');
-          this._log(error);
-          return reject(error);
-        }
-
-        const grantType = 'refresh_token';
-        const postData = `grant_type=${ grantType }&refresh_token=${ refreshToken }&client_id=${ this._clientId }&client_secret=${ this._clientSecret }&redirect_uri=${ encodeURIComponent(this._redirectUri) }`;
-        const url = 'https://api.amazon.com/auth/o2/token';
-        const xhr = new XMLHttpRequest();
-
-        xhr.open('POST', url, true);
-        xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded;charset=UTF-8');
-        xhr.responseType = 'json';
-        xhr.onload = event => {
-          const response = xhr.response;
-
-          if (response.error) {
-            const error = response.error.message;
-            this.emit(AVS.EventTypes.ERROR, error);
-
-            return reject(error);
+          if (newWindow) {
+            window.open(authUrl);
           } else {
-            const token = response.access_token;
-            const refreshToken = response.refresh_token;
+            window.location.href = authUrl;
+          }
+        });
+      }
+    }, {
+      key: 'getTokenFromCode',
+      value: function getTokenFromCode(code) {
+        var _this4 = this;
 
-            this.setToken(token);
-            this.setRefreshToken(refreshToken);
+        return new Promise(function (resolve, reject) {
+          if (typeof code !== 'string') {
+            var error = new TypeError('`code` must be a string.');
+            _this4._log(error);
+            return reject(error);
+          }
+
+          var grantType = 'authorization_code';
+          var postData = 'grant_type=' + grantType + '&code=' + code + '&client_id=' + _this4._clientId + '&client_secret=' + _this4._clientSecret + '&redirect_uri=' + encodeURIComponent(_this4._redirectUri);
+          var url = 'https://api.amazon.com/auth/o2/token';
+
+          var xhr = new XMLHttpRequest();
+
+          xhr.open('POST', url, true);
+          xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded;charset=UTF-8');
+          xhr.onload = function (event) {
+            console.log('RESPONSE', xhr.response);
+
+            var response = xhr.response;
+
+            try {
+              response = JSON.parse(xhr.response);
+            } catch (error) {
+              _this4._log(error);
+              return reject(error);
+            }
+
+            var isObject = response instanceof Object;
+            var errorDescription = isObject && response.error_description;
+
+            if (errorDescription) {
+              var _error2 = new Error(errorDescription);
+              _this4._log(_error2);
+              return reject(_error2);
+            }
+
+            var token = response.access_token;
+            var refreshToken = response.refresh_token;
+            var tokenType = response.token_type;
+            var expiresIn = response.expiresIn;
+
+            _this4.setToken(token);
+            _this4.setRefreshToken(refreshToken);
+
+            _this4.emit(AVS.EventTypes.LOGIN);
+            _this4._log('Logged in.');
+            resolve(response);
+          };
+
+          xhr.onerror = function (error) {
+            _this4._log(error);
+            reject(error);
+          };
+
+          xhr.send(postData);
+        });
+      }
+    }, {
+      key: 'refreshToken',
+      value: function refreshToken() {
+        var _this5 = this;
+
+        return this.getTokenFromRefreshToken(this._refreshToken).then(function () {
+          return {
+            token: _this5._token,
+            refreshToken: _this5._refreshToken
+          };
+        });
+      }
+    }, {
+      key: 'getTokenFromRefreshToken',
+      value: function getTokenFromRefreshToken() {
+        var _this6 = this;
+
+        var refreshToken = arguments.length <= 0 || arguments[0] === undefined ? this._refreshToken : arguments[0];
+
+        return new Promise(function (resolve, reject) {
+          if (typeof refreshToken !== 'string') {
+            var error = new Error('`refreshToken` must a string.');
+            _this6._log(error);
+            return reject(error);
+          }
+
+          var grantType = 'refresh_token';
+          var postData = 'grant_type=' + grantType + '&refresh_token=' + refreshToken + '&client_id=' + _this6._clientId + '&client_secret=' + _this6._clientSecret + '&redirect_uri=' + encodeURIComponent(_this6._redirectUri);
+          var url = 'https://api.amazon.com/auth/o2/token';
+          var xhr = new XMLHttpRequest();
+
+          xhr.open('POST', url, true);
+          xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded;charset=UTF-8');
+          xhr.responseType = 'json';
+          xhr.onload = function (event) {
+            var response = xhr.response;
+
+            if (response.error) {
+              var _error3 = response.error.message;
+              _this6.emit(AVS.EventTypes.ERROR, _error3);
+
+              return reject(_error3);
+            } else {
+              var token = response.access_token;
+              var _refreshToken = response.refresh_token;
+
+              _this6.setToken(token);
+              _this6.setRefreshToken(_refreshToken);
+
+              return resolve(token);
+            }
+          };
+
+          xhr.onerror = function (error) {
+            _this6._log(error);
+            reject(error);
+          };
+
+          xhr.send(postData);
+        });
+      }
+    }, {
+      key: 'getTokenFromUrl',
+      value: function getTokenFromUrl() {
+        var _this7 = this;
+
+        return new Promise(function (resolve, reject) {
+          var queryString = window.location.href.split('?#');
+
+          if (queryString.length === 2) {
+            queryString = queryString[1];
+          } else {
+            queryString = window.location.search.substr(1);
+          }
+
+          var query = qs.parse(queryString);
+          var token = query.access_token;
+          var refreshToken = query.refresh_token;
+          var tokenType = query.token_type;
+          var expiresIn = query.expiresIn;
+
+          if (token) {
+            _this7.setToken(token);
+            _this7.emit(AVS.EventTypes.LOGIN);
+            _this7._log('Logged in.');
+
+            if (refreshToken) {
+              _this7.setRefreshToken(refreshToken);
+            }
 
             return resolve(token);
           }
-        };
 
-        xhr.onerror = error => {
-          this._log(error);
-          reject(error);
-        };
+          return reject(null);
+        });
+      }
+    }, {
+      key: 'getCodeFromUrl',
+      value: function getCodeFromUrl() {
+        return new Promise(function (resolve, reject) {
+          var query = qs.parse(window.location.search.substr(1));
+          var code = query.code;
 
-        xhr.send(postData);
-      });
-    }
+          if (code) {
+            return resolve(code);
+          }
 
-    getTokenFromUrl() {
-      return new Promise((resolve, reject) => {
-        let queryString = window.location.href.split('?#');
+          return reject(null);
+        });
+      }
+    }, {
+      key: 'setToken',
+      value: function setToken(token) {
+        var _this8 = this;
 
-        if (queryString.length === 2) {
-          queryString = queryString[1];
-        } else {
-          queryString = window.location.search.substr(1);
-        }
+        return new Promise(function (resolve, reject) {
+          if (typeof token === 'string') {
+            _this8._token = token;
+            _this8.emit(AVS.EventTypes.TOKEN_SET);
+            _this8._log('Token set.');
+            resolve(_this8._token);
+          } else {
+            var error = new TypeError('`token` must be a string.');
+            _this8._log(error);
+            reject(error);
+          }
+        });
+      }
+    }, {
+      key: 'setRefreshToken',
+      value: function setRefreshToken(refreshToken) {
+        var _this9 = this;
 
-        const query = qs.parse(queryString);
-        const token = query.access_token;
-        const refreshToken = query.refresh_token;
-        const tokenType = query.token_type;
-        const expiresIn = query.expiresIn;
+        return new Promise(function (resolve, reject) {
+          if (typeof refreshToken === 'string') {
+            _this9._refreshToken = refreshToken;
+            _this9.emit(AVS.EventTypes.REFRESH_TOKEN_SET);
+            _this9._log('Refresh token set.');
+            resolve(_this9._refreshToken);
+          } else {
+            var error = new TypeError('`refreshToken` must be a string.');
+            _this9._log(error);
+            reject(error);
+          }
+        });
+      }
+    }, {
+      key: 'setClientId',
+      value: function setClientId(clientId) {
+        var _this10 = this;
 
-        if (token) {
-          this.setToken(token);
-          this.emit(AVS.EventTypes.LOGIN);
-          this._log('Logged in.');
+        return new Promise(function (resolve, reject) {
+          if (typeof clientId === 'string') {
+            _this10._clientId = clientId;
+            resolve(_this10._clientId);
+          } else {
+            var error = new TypeError('`clientId` must be a string.');
+            _this10._log(error);
+            reject(error);
+          }
+        });
+      }
+    }, {
+      key: 'setClientSecret',
+      value: function setClientSecret(clientSecret) {
+        var _this11 = this;
+
+        return new Promise(function (resolve, reject) {
+          if (typeof clientSecret === 'string') {
+            _this11._clientSecret = clientSecret;
+            resolve(_this11._clientSecret);
+          } else {
+            var error = new TypeError('`clientSecret` must be a string');
+            _this11._log(error);
+            reject(error);
+          }
+        });
+      }
+    }, {
+      key: 'setDeviceId',
+      value: function setDeviceId(deviceId) {
+        var _this12 = this;
+
+        return new Promise(function (resolve, reject) {
+          if (typeof deviceId === 'string') {
+            _this12._deviceId = deviceId;
+            resolve(_this12._deviceId);
+          } else {
+            var error = new TypeError('`deviceId` must be a string.');
+            _this12._log(error);
+            reject(error);
+          }
+        });
+      }
+    }, {
+      key: 'setDeviceSerialNumber',
+      value: function setDeviceSerialNumber(deviceSerialNumber) {
+        var _this13 = this;
+
+        return new Promise(function (resolve, reject) {
+          if (typeof deviceSerialNumber === 'number' || typeof deviceSerialNumber === 'string') {
+            _this13._deviceSerialNumber = deviceSerialNumber;
+            resolve(_this13._deviceSerialNumber);
+          } else {
+            var error = new TypeError('`deviceSerialNumber` must be a number or string.');
+            _this13._log(error);
+            reject(error);
+          }
+        });
+      }
+    }, {
+      key: 'setRedirectUri',
+      value: function setRedirectUri(redirectUri) {
+        var _this14 = this;
+
+        return new Promise(function (resolve, reject) {
+          if (typeof redirectUri === 'string') {
+            _this14._redirectUri = redirectUri;
+            resolve(_this14._redirectUri);
+          } else {
+            var error = new TypeError('`redirectUri` must be a string.');
+            _this14._log(error);
+            reject(error);
+          }
+        });
+      }
+    }, {
+      key: 'setDebug',
+      value: function setDebug(debug) {
+        var _this15 = this;
+
+        return new Promise(function (resolve, reject) {
+          if (typeof debug === 'boolean') {
+            _this15._debug = debug;
+            resolve(_this15._debug);
+          } else {
+            var error = new TypeError('`debug` must be a boolean.');
+            _this15._log(error);
+            reject(error);
+          }
+        });
+      }
+    }, {
+      key: 'getToken',
+      value: function getToken() {
+        var _this16 = this;
+
+        return new Promise(function (resolve, reject) {
+          var token = _this16._token;
+
+          if (token) {
+            return resolve(token);
+          }
+
+          return reject();
+        });
+      }
+    }, {
+      key: 'getRefreshToken',
+      value: function getRefreshToken() {
+        var _this17 = this;
+
+        return new Promise(function (resolve, reject) {
+          var refreshToken = _this17._refreshToken;
 
           if (refreshToken) {
-            this.setRefreshToken(refreshToken);
+            return resolve(refreshToken);
           }
 
-          return resolve(token);
-        }
+          return reject();
+        });
+      }
+    }, {
+      key: 'requestMic',
+      value: function requestMic() {
+        var _this18 = this;
 
-        return reject(null);
-      });
-    }
+        return new Promise(function (resolve, reject) {
+          _this18._log('Requesting microphone.');
+          // Ensure that the file can be loaded in environments where navigator is not defined (node servers)
+          if (!navigator.getUserMedia) {
+            navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia;
+          }
 
-    getCodeFromUrl() {
-      return new Promise((resolve, reject) => {
-        const query = qs.parse(window.location.search.substr(1));
-        const code = query.code;
-
-        if (code) {
-          return resolve(code);
-        }
-
-        return reject(null);
-      });
-    }
-
-    setToken(token) {
-      return new Promise((resolve, reject) => {
-        if (typeof token === 'string') {
-          this._token = token;
-          this.emit(AVS.EventTypes.TOKEN_SET);
-          this._log('Token set.');
-          resolve(this._token);
-        } else {
-          const error = new TypeError('`token` must be a string.');
-          this._log(error);
-          reject(error);
-        }
-      });
-    }
-
-    setRefreshToken(refreshToken) {
-      return new Promise((resolve, reject) => {
-        if (typeof refreshToken === 'string') {
-          this._refreshToken = refreshToken;
-          this.emit(AVS.EventTypes.REFRESH_TOKEN_SET);
-          this._log('Refresh token set.');
-          resolve(this._refreshToken);
-        } else {
-          const error = new TypeError('`refreshToken` must be a string.');
-          this._log(error);
-          reject(error);
-        }
-      });
-    }
-
-    setClientId(clientId) {
-      return new Promise((resolve, reject) => {
-        if (typeof clientId === 'string') {
-          this._clientId = clientId;
-          resolve(this._clientId);
-        } else {
-          const error = new TypeError('`clientId` must be a string.');
-          this._log(error);
-          reject(error);
-        }
-      });
-    }
-
-    setClientSecret(clientSecret) {
-      return new Promise((resolve, reject) => {
-        if (typeof clientSecret === 'string') {
-          this._clientSecret = clientSecret;
-          resolve(this._clientSecret);
-        } else {
-          const error = new TypeError('`clientSecret` must be a string');
-          this._log(error);
-          reject(error);
-        }
-      });
-    }
-
-    setDeviceId(deviceId) {
-      return new Promise((resolve, reject) => {
-        if (typeof deviceId === 'string') {
-          this._deviceId = deviceId;
-          resolve(this._deviceId);
-        } else {
-          const error = new TypeError('`deviceId` must be a string.');
-          this._log(error);
-          reject(error);
-        }
-      });
-    }
-
-    setDeviceSerialNumber(deviceSerialNumber) {
-      return new Promise((resolve, reject) => {
-        if (typeof deviceSerialNumber === 'number' || typeof deviceSerialNumber === 'string') {
-          this._deviceSerialNumber = deviceSerialNumber;
-          resolve(this._deviceSerialNumber);
-        } else {
-          const error = new TypeError('`deviceSerialNumber` must be a number or string.');
-          this._log(error);
-          reject(error);
-        }
-      });
-    }
-
-    setRedirectUri(redirectUri) {
-      return new Promise((resolve, reject) => {
-        if (typeof redirectUri === 'string') {
-          this._redirectUri = redirectUri;
-          resolve(this._redirectUri);
-        } else {
-          const error = new TypeError('`redirectUri` must be a string.');
-          this._log(error);
-          reject(error);
-        }
-      });
-    }
-
-    setDebug(debug) {
-      return new Promise((resolve, reject) => {
-        if (typeof debug === 'boolean') {
-          this._debug = debug;
-          resolve(this._debug);
-        } else {
-          const error = new TypeError('`debug` must be a boolean.');
-          this._log(error);
-          reject(error);
-        }
-      });
-    }
-
-    getToken() {
-      return new Promise((resolve, reject) => {
-        const token = this._token;
-
-        if (token) {
-          return resolve(token);
-        }
-
-        return reject();
-      });
-    }
-
-    getRefreshToken() {
-      return new Promise((resolve, reject) => {
-        const refreshToken = this._refreshToken;
-
-        if (refreshToken) {
-          return resolve(refreshToken);
-        }
-
-        return reject();
-      });
-    }
-
-    requestMic() {
-      return new Promise((resolve, reject) => {
-        this._log('Requesting microphone.');
-        // Ensure that the file can be loaded in environments where navigator is not defined (node servers)
-        if (!navigator.getUserMedia) {
-          navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia;
-        }
-
-        navigator.getUserMedia({
-          audio: true
-        }, stream => {
-          this._log('Microphone connected.');
-          return this.connectMediaStream(stream).then(() => {
-            return resolve(stream);
+          navigator.getUserMedia({
+            audio: true
+          }, function (stream) {
+            _this18._log('Microphone connected.');
+            return _this18.connectMediaStream(stream).then(function () {
+              return resolve(stream);
+            });
+          }, function (error) {
+            _this18._log('error', error);
+            _this18.emit(AVS.EventTypes.ERROR, error);
+            return reject(error);
           });
-        }, error => {
-          this._log('error', error);
-          this.emit(AVS.EventTypes.ERROR, error);
-          return reject(error);
         });
-      });
-    }
+      }
+    }, {
+      key: 'connectMediaStream',
+      value: function connectMediaStream(stream) {
+        var _this19 = this;
 
-    connectMediaStream(stream) {
-      return new Promise((resolve, reject) => {
-        const isMediaStream = Object.prototype.toString.call(stream) === '[object MediaStream]';
+        return new Promise(function (resolve, reject) {
+          var isMediaStream = Object.prototype.toString.call(stream) === '[object MediaStream]';
 
-        if (!isMediaStream) {
-          const error = new TypeError('Argument must be a `MediaStream` object.');
-          this._log('error', error);
-          this.emit(AVS.EventTypes.ERROR, error);
-          return reject(error);
-        }
-
-        this._audioContext = new AudioContext();
-        this._sampleRate = this._audioContext.sampleRate;
-
-        this._log(`Sample rate: ${ this._sampleRate }.`);
-
-        this._volumeNode = this._audioContext.createGain();
-        this._audioInput = this._audioContext.createMediaStreamSource(stream);
-
-        this._audioInput.connect(this._volumeNode);
-
-        this._recorder = this._audioContext.createScriptProcessor(this._bufferSize, this._inputChannels, this._outputChannels);
-
-        this._recorder.onaudioprocess = event => {
-          if (!this._isRecording) {
-            return false;
-          }
-
-          const left = event.inputBuffer.getChannelData(0);
-          this._leftChannel.push(new Float32Array(left));
-
-          if (this._inputChannels > 1) {
-            const right = event.inputBuffer.getChannelData(1);
-            this._rightChannel.push(new Float32Array(right));
-          }
-
-          this._recordingLength += this._bufferSize;
-        };
-
-        this._volumeNode.connect(this._recorder);
-        this._recorder.connect(this._audioContext.destination);
-        this._log(`Media stream connected.`);
-
-        return resolve();
-      });
-    }
-
-    startRecording() {
-      return new Promise((resolve, reject) => {
-        if (!this._audioInput) {
-          const error = new Error('No Media Stream connected.');
-          this._log('error', error);
-          this.emit(AVS.EventTypes.ERROR, error);
-          return reject(error);
-        }
-
-        this._isRecording = true;
-        this._leftChannel.length = this._rightChannel.length = 0;
-        this._recordingLength = 0;
-        this._log(`Recording started.`);
-        this.emit(AVS.EventTypes.RECORD_START);
-
-        return resolve();
-      });
-    }
-
-    stopRecording() {
-      return new Promise((resolve, reject) => {
-        if (!this._isRecording) {
-          this.emit(AVS.EventTypes.RECORD_STOP);
-          this._log('Recording stopped.');
-          return resolve();
-        }
-
-        this._isRecording = false;
-
-        const leftBuffer = Helpers.mergeBuffers(this._leftChannel, this._recordingLength);
-        let interleaved = null;
-
-        if (this._outputChannels > 1) {
-          const rightBuffer = Helpers.mergeBuffers(this._rightChannel, this._recordingLength);
-          interleaved = Helpers.interleave(leftBuffer, rightBuffer);
-        } else {
-          interleaved = Helpers.interleave(leftBuffer);
-        }
-
-        interleaved = Helpers.downsampleBuffer(interleaved, this._sampleRate, this._outputSampleRate);
-
-        const buffer = new ArrayBuffer(44 + interleaved.length * 2);
-        const view = new DataView(buffer);
-
-        /**
-         * @credit https://github.com/mattdiamond/Recorderjs
-         */
-        Helpers.writeUTFBytes(view, 0, 'RIFF');
-        view.setUint32(4, 44 + interleaved.length * 2, true);
-        Helpers.writeUTFBytes(view, 8, 'WAVE');
-        Helpers.writeUTFBytes(view, 12, 'fmt ');
-        view.setUint32(16, 16, true);
-        view.setUint16(20, 1, true);
-        view.setUint16(22, this._outputChannels, true);
-        view.setUint32(24, this._outputSampleRate, true);
-        view.setUint32(28, this._outputSampleRate * 4, true);
-        view.setUint16(32, 4, true);
-        view.setUint16(34, 16, true);
-        Helpers.writeUTFBytes(view, 36, 'data');
-        view.setUint32(40, interleaved.length * 2, true);
-
-        const length = interleaved.length;
-        const volume = 1;
-        let index = 44;
-
-        for (let i = 0; i < length; i++) {
-          view.setInt16(index, interleaved[i] * (0x7FFF * volume), true);
-          index += 2;
-        }
-
-        this._log(`Recording stopped.`);
-        this.emit(AVS.EventTypes.RECORD_STOP);
-        return resolve(view);
-      });
-    }
-
-    playBlob(blob) {
-      return new Promise((resolve, reject) => {
-        if (!blob) {
-          reject();
-        }
-
-        const objectUrl = URL.createObjectURL(blob);
-        const audio = new Audio();
-        audio.src = objectUrl;
-
-        audio.addEventListener('ended', () => {
-          this._log('Audio play ended.');
-        });
-
-        audio.onload = event => {
-          URL.revokeObjectUrl(objectUrl);
-        };
-
-        this._log('Audio play started.');
-        audio.play();
-
-        resolve();
-      });
-    }
-
-    sendAudio(dataView) {
-      return new Promise((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        const url = 'https://access-alexa-na.amazon.com/v1/avs/speechrecognizer/recognize';
-
-        xhr.open('POST', url, true);
-        xhr.responseType = 'arraybuffer';
-        xhr.onload = event => {
-          console.log('RESPONSE', xhr.response);
-
-          const buffer = new Buffer(xhr.response);
-
-          if (xhr.status === 200) {
-            const parsedMessage = httpMessageParser(buffer);
-            resolve(parsedMessage);
-          } else {
-            let error = new Error('An error occured with request.');
-            let response = {};
-
-            if (!xhr.response.byteLength) {
-              error = new Error('Empty response.');
-            } else {
-              try {
-                response = JSON.parse(Helpers.arrayBufferToString(buffer));
-              } catch (err) {
-                error = err;
-              }
-            }
-
-            if (response.error instanceof Object) {
-              if (response.error.code === AMAZON_ERROR_CODES.InvalidAccessTokenException) {
-                this.emit(AVS.EventTypes.TOKEN_INVALID);
-              }
-
-              error = response.error.message;
-            }
-
-            this.emit(AVS.EventTypes.ERROR, error);
+          if (!isMediaStream) {
+            var error = new TypeError('Argument must be a `MediaStream` object.');
+            _this19._log('error', error);
+            _this19.emit(AVS.EventTypes.ERROR, error);
             return reject(error);
           }
-        };
 
-        xhr.onerror = error => {
-          this._log(error);
-          reject(error);
-        };
+          _this19._audioContext = new AudioContext();
+          _this19._sampleRate = _this19._audioContext.sampleRate;
 
-        const BOUNDARY = 'BOUNDARY1234';
-        const BOUNDARY_DASHES = '--';
-        const NEWLINE = '\r\n';
-        const METADATA_CONTENT_DISPOSITION = 'Content-Disposition: form-data; name="metadata"';
-        const METADATA_CONTENT_TYPE = 'Content-Type: application/json; charset=UTF-8';
-        const AUDIO_CONTENT_TYPE = 'Content-Type: audio/L16; rate=16000; channels=1';
-        const AUDIO_CONTENT_DISPOSITION = 'Content-Disposition: form-data; name="audio"';
+          _this19._log('Sample rate: ' + _this19._sampleRate + '.');
 
-        const metadata = {
-          messageHeader: {},
-          messageBody: {
-            profile: 'alexa-close-talk',
-            locale: 'en-us',
-            format: 'audio/L16; rate=16000; channels=1'
+          _this19._volumeNode = _this19._audioContext.createGain();
+          _this19._audioInput = _this19._audioContext.createMediaStreamSource(stream);
+
+          _this19._audioInput.connect(_this19._volumeNode);
+
+          _this19._recorder = _this19._audioContext.createScriptProcessor(_this19._bufferSize, _this19._inputChannels, _this19._outputChannels);
+
+          _this19._recorder.onaudioprocess = function (event) {
+            if (!_this19._isRecording) {
+              return false;
+            }
+
+            var left = event.inputBuffer.getChannelData(0);
+            _this19._leftChannel.push(new Float32Array(left));
+
+            if (_this19._inputChannels > 1) {
+              var right = event.inputBuffer.getChannelData(1);
+              _this19._rightChannel.push(new Float32Array(right));
+            }
+
+            _this19._recordingLength += _this19._bufferSize;
+          };
+
+          _this19._volumeNode.connect(_this19._recorder);
+          _this19._recorder.connect(_this19._audioContext.destination);
+          _this19._log('Media stream connected.');
+
+          return resolve();
+        });
+      }
+    }, {
+      key: 'startRecording',
+      value: function startRecording() {
+        var _this20 = this;
+
+        return new Promise(function (resolve, reject) {
+          if (!_this20._audioInput) {
+            var error = new Error('No Media Stream connected.');
+            _this20._log('error', error);
+            _this20.emit(AVS.EventTypes.ERROR, error);
+            return reject(error);
           }
+
+          _this20._isRecording = true;
+          _this20._leftChannel.length = _this20._rightChannel.length = 0;
+          _this20._recordingLength = 0;
+          _this20._log('Recording started.');
+          _this20.emit(AVS.EventTypes.RECORD_START);
+
+          return resolve();
+        });
+      }
+    }, {
+      key: 'stopRecording',
+      value: function stopRecording() {
+        var _this21 = this;
+
+        return new Promise(function (resolve, reject) {
+          if (!_this21._isRecording) {
+            _this21.emit(AVS.EventTypes.RECORD_STOP);
+            _this21._log('Recording stopped.');
+            return resolve();
+          }
+
+          _this21._isRecording = false;
+
+          var leftBuffer = Helpers.mergeBuffers(_this21._leftChannel, _this21._recordingLength);
+          var interleaved = null;
+
+          if (_this21._outputChannels > 1) {
+            var rightBuffer = Helpers.mergeBuffers(_this21._rightChannel, _this21._recordingLength);
+            interleaved = Helpers.interleave(leftBuffer, rightBuffer);
+          } else {
+            interleaved = Helpers.interleave(leftBuffer);
+          }
+
+          interleaved = Helpers.downsampleBuffer(interleaved, _this21._sampleRate, _this21._outputSampleRate);
+
+          var buffer = new ArrayBuffer(44 + interleaved.length * 2);
+          var view = new DataView(buffer);
+
+          /**
+           * @credit https://github.com/mattdiamond/Recorderjs
+           */
+          Helpers.writeUTFBytes(view, 0, 'RIFF');
+          view.setUint32(4, 44 + interleaved.length * 2, true);
+          Helpers.writeUTFBytes(view, 8, 'WAVE');
+          Helpers.writeUTFBytes(view, 12, 'fmt ');
+          view.setUint32(16, 16, true);
+          view.setUint16(20, 1, true);
+          view.setUint16(22, _this21._outputChannels, true);
+          view.setUint32(24, _this21._outputSampleRate, true);
+          view.setUint32(28, _this21._outputSampleRate * 4, true);
+          view.setUint16(32, 4, true);
+          view.setUint16(34, 16, true);
+          Helpers.writeUTFBytes(view, 36, 'data');
+          view.setUint32(40, interleaved.length * 2, true);
+
+          var length = interleaved.length;
+          var volume = 1;
+          var index = 44;
+
+          for (var i = 0; i < length; i++) {
+            view.setInt16(index, interleaved[i] * (0x7FFF * volume), true);
+            index += 2;
+          }
+
+          _this21._log('Recording stopped.');
+          _this21.emit(AVS.EventTypes.RECORD_STOP);
+          return resolve(view);
+        });
+      }
+    }, {
+      key: 'playBlob',
+      value: function playBlob(blob) {
+        var _this22 = this;
+
+        return new Promise(function (resolve, reject) {
+          if (!blob) {
+            reject();
+          }
+
+          var objectUrl = URL.createObjectURL(blob);
+          var audio = new Audio();
+          audio.src = objectUrl;
+
+          audio.addEventListener('ended', function () {
+            _this22._log('Audio play ended.');
+          });
+
+          audio.onload = function (event) {
+            URL.revokeObjectUrl(objectUrl);
+          };
+
+          _this22._log('Audio play started.');
+          audio.play();
+
+          resolve();
+        });
+      }
+    }, {
+      key: 'sendAudio',
+      value: function sendAudio(dataView) {
+        var _this23 = this;
+
+        return new Promise(function (resolve, reject) {
+          var xhr = new XMLHttpRequest();
+          var url = 'https://access-alexa-na.amazon.com/v1/avs/speechrecognizer/recognize';
+
+          xhr.open('POST', url, true);
+          xhr.responseType = 'arraybuffer';
+          xhr.onload = function (event) {
+            console.log('RESPONSE', xhr.response);
+
+            var buffer = new Buffer(xhr.response);
+
+            if (xhr.status === 200) {
+              var parsedMessage = httpMessageParser(buffer);
+              resolve(parsedMessage);
+            } else {
+              var error = new Error('An error occured with request.');
+              var response = {};
+
+              if (!xhr.response.byteLength) {
+                error = new Error('Empty response.');
+              } else {
+                try {
+                  response = JSON.parse(Helpers.arrayBufferToString(buffer));
+                } catch (err) {
+                  error = err;
+                }
+              }
+
+              if (response.error instanceof Object) {
+                if (response.error.code === AMAZON_ERROR_CODES.InvalidAccessTokenException) {
+                  _this23.emit(AVS.EventTypes.TOKEN_INVALID);
+                }
+
+                error = response.error.message;
+              }
+
+              _this23.emit(AVS.EventTypes.ERROR, error);
+              return reject(error);
+            }
+          };
+
+          xhr.onerror = function (error) {
+            _this23._log(error);
+            reject(error);
+          };
+
+          var BOUNDARY = 'BOUNDARY1234';
+          var BOUNDARY_DASHES = '--';
+          var NEWLINE = '\r\n';
+          var METADATA_CONTENT_DISPOSITION = 'Content-Disposition: form-data; name="metadata"';
+          var METADATA_CONTENT_TYPE = 'Content-Type: application/json; charset=UTF-8';
+          var AUDIO_CONTENT_TYPE = 'Content-Type: audio/L16; rate=16000; channels=1';
+          var AUDIO_CONTENT_DISPOSITION = 'Content-Disposition: form-data; name="audio"';
+
+          var metadata = {
+            messageHeader: {},
+            messageBody: {
+              profile: 'alexa-close-talk',
+              locale: 'en-us',
+              format: 'audio/L16; rate=16000; channels=1'
+            }
+          };
+
+          var postDataStart = [NEWLINE, BOUNDARY_DASHES, BOUNDARY, NEWLINE, METADATA_CONTENT_DISPOSITION, NEWLINE, METADATA_CONTENT_TYPE, NEWLINE, NEWLINE, JSON.stringify(metadata), NEWLINE, BOUNDARY_DASHES, BOUNDARY, NEWLINE, AUDIO_CONTENT_DISPOSITION, NEWLINE, AUDIO_CONTENT_TYPE, NEWLINE, NEWLINE].join('');
+
+          var postDataEnd = [NEWLINE, BOUNDARY_DASHES, BOUNDARY, BOUNDARY_DASHES, NEWLINE].join('');
+
+          var size = postDataStart.length + dataView.byteLength + postDataEnd.length;
+          var uint8Array = new Uint8Array(size);
+          var i = 0;
+
+          for (; i < postDataStart.length; i++) {
+            uint8Array[i] = postDataStart.charCodeAt(i) & 0xFF;
+          }
+
+          for (var j = 0; j < dataView.byteLength; i++, j++) {
+            uint8Array[i] = dataView.getUint8(j);
+          }
+
+          for (var _j = 0; _j < postDataEnd.length; i++, _j++) {
+            uint8Array[i] = postDataEnd.charCodeAt(_j) & 0xFF;
+          }
+
+          var payload = uint8Array.buffer;
+
+          xhr.setRequestHeader('Authorization', 'Bearer ' + _this23._token);
+          xhr.setRequestHeader('Content-Type', 'multipart/form-data; boundary=' + BOUNDARY);
+          xhr.send(payload);
+        });
+      }
+    }], [{
+      key: 'EventTypes',
+      get: function get() {
+        return {
+          LOG: 'log',
+          ERROR: 'error',
+          LOGIN: 'login',
+          LOGOUT: 'logout',
+          RECORD_START: 'recordStart',
+          RECORD_STOP: 'recordStop',
+          TOKEN_SET: 'tokenSet',
+          REFRESH_TOKEN_SET: 'refreshTokenSet',
+          TOKEN_INVALID: 'tokenInvalid'
         };
+      }
+    }]);
 
-        const postDataStart = [NEWLINE, BOUNDARY_DASHES, BOUNDARY, NEWLINE, METADATA_CONTENT_DISPOSITION, NEWLINE, METADATA_CONTENT_TYPE, NEWLINE, NEWLINE, JSON.stringify(metadata), NEWLINE, BOUNDARY_DASHES, BOUNDARY, NEWLINE, AUDIO_CONTENT_DISPOSITION, NEWLINE, AUDIO_CONTENT_TYPE, NEWLINE, NEWLINE].join('');
+    return AVS;
+  }();
 
-        const postDataEnd = [NEWLINE, BOUNDARY_DASHES, BOUNDARY, BOUNDARY_DASHES, NEWLINE].join('');
+  var Helpers = function () {
+    function Helpers() {
+      _classCallCheck(this, Helpers);
+    }
 
-        const size = postDataStart.length + dataView.byteLength + postDataEnd.length;
-        const uint8Array = new Uint8Array(size);
-        let i = 0;
+    _createClass(Helpers, null, [{
+      key: 'downsampleBuffer',
 
-        for (; i < postDataStart.length; i++) {
-          uint8Array[i] = postDataStart.charCodeAt(i) & 0xFF;
+      /**
+       * @credit http://stackoverflow.com/a/26245260
+       */
+      value: function downsampleBuffer(buffer, inputSampleRate, outputSampleRate) {
+        if (inputSampleRate === outputSampleRate) {
+          return buffer;
         }
 
-        for (let j = 0; j < dataView.byteLength; i++, j++) {
-          uint8Array[i] = dataView.getUint8(j);
+        if (inputSampleRate < outputSampleRate) {
+          throw new Error('Output sample rate must be less than input sample rate.');
         }
 
-        for (let j = 0; j < postDataEnd.length; i++, j++) {
-          uint8Array[i] = postDataEnd.charCodeAt(j) & 0xFF;
+        var sampleRateRatio = inputSampleRate / outputSampleRate;
+        var newLength = Math.round(buffer.length / sampleRateRatio);
+        var result = new Float32Array(newLength);
+        var offsetResult = 0;
+        var offsetBuffer = 0;
+
+        while (offsetResult < result.length) {
+          var nextOffsetBuffer = Math.round((offsetResult + 1) * sampleRateRatio);
+          var accum = 0;
+          var count = 0;
+
+          for (var i = offsetBuffer; i < nextOffsetBuffer && i < buffer.length; i++) {
+            accum += buffer[i];
+            count++;
+          }
+
+          result[offsetResult] = accum / count;
+          offsetResult++;
+          offsetBuffer = nextOffsetBuffer;
         }
 
-        const payload = uint8Array.buffer;
-
-        xhr.setRequestHeader('Authorization', `Bearer ${ this._token }`);
-        xhr.setRequestHeader('Content-Type', 'multipart/form-data; boundary=' + BOUNDARY);
-        xhr.send(payload);
-      });
-    }
-
-    static get EventTypes() {
-      return {
-        LOG: 'log',
-        ERROR: 'error',
-        LOGIN: 'login',
-        LOGOUT: 'logout',
-        RECORD_START: 'recordStart',
-        RECORD_STOP: 'recordStop',
-        TOKEN_SET: 'tokenSet',
-        REFRESH_TOKEN_SET: 'refreshTokenSet',
-        TOKEN_INVALID: 'tokenInvalid'
-      };
-    }
-  }
-
-  class Helpers {
-    /**
-     * @credit http://stackoverflow.com/a/26245260
-     */
-    static downsampleBuffer(buffer, inputSampleRate, outputSampleRate) {
-      if (inputSampleRate === outputSampleRate) {
-        return buffer;
+        return result;
       }
 
-      if (inputSampleRate < outputSampleRate) {
-        throw new Error('Output sample rate must be less than input sample rate.');
-      }
+      /**
+       * @credit https://github.com/mattdiamond/Recorderjs
+       */
 
-      const sampleRateRatio = inputSampleRate / outputSampleRate;
-      const newLength = Math.round(buffer.length / sampleRateRatio);
-      let result = new Float32Array(newLength);
-      let offsetResult = 0;
-      let offsetBuffer = 0;
-
-      while (offsetResult < result.length) {
-        let nextOffsetBuffer = Math.round((offsetResult + 1) * sampleRateRatio);
-        let accum = 0;
-        let count = 0;
-
-        for (var i = offsetBuffer; i < nextOffsetBuffer && i < buffer.length; i++) {
-          accum += buffer[i];
-          count++;
+    }, {
+      key: 'interleave',
+      value: function interleave(leftChannel, rightChannel) {
+        if (leftChannel && !rightChannel) {
+          return leftChannel;
         }
 
-        result[offsetResult] = accum / count;
-        offsetResult++;
-        offsetBuffer = nextOffsetBuffer;
+        var length = leftChannel.length + rightChannel.length;
+        var result = new Float32Array(length);
+        var inputIndex = 0;
+
+        for (var index = 0; index < length;) {
+          result[index++] = leftChannel[inputIndex];
+          result[index++] = rightChannel[inputIndex];
+          inputIndex++;
+        }
+
+        return result;
       }
 
-      return result;
-    }
+      /**
+       * @credit https://github.com/mattdiamond/Recorderjs
+       */
 
-    /**
-     * @credit https://github.com/mattdiamond/Recorderjs
-     */
-    static interleave(leftChannel, rightChannel) {
-      if (leftChannel && !rightChannel) {
-        return leftChannel;
+    }, {
+      key: 'mergeBuffers',
+      value: function mergeBuffers(channelBuffer, recordingLength) {
+        var result = new Float32Array(recordingLength);
+        var length = channelBuffer.length;
+        var offset = 0;
+
+        for (var i = 0; i < length; i++) {
+          var buffer = channelBuffer[i];
+
+          result.set(buffer, offset);
+          offset += buffer.length;
+        }
+
+        return result;
       }
 
-      const length = leftChannel.length + rightChannel.length;
-      let result = new Float32Array(length);
-      let inputIndex = 0;
+      /**
+       * @credit https://github.com/mattdiamond/Recorderjs
+       */
 
-      for (let index = 0; index < length;) {
-        result[index++] = leftChannel[inputIndex];
-        result[index++] = rightChannel[inputIndex];
-        inputIndex++;
+    }, {
+      key: 'writeUTFBytes',
+      value: function writeUTFBytes(view, offset, string) {
+        var length = string.length;
+
+        for (var i = 0; i < length; i++) {
+          view.setUint8(offset + i, string.charCodeAt(i));
+        }
       }
 
-      return result;
-    }
+      /**
+       * @credit https://developers.google.com/web/updates/2012/06/How-to-convert-ArrayBuffer-to-and-from-String?hl=en
+       */
 
-    /**
-     * @credit https://github.com/mattdiamond/Recorderjs
-     */
-    static mergeBuffers(channelBuffer, recordingLength) {
-      const result = new Float32Array(recordingLength);
-      const length = channelBuffer.length;
-      let offset = 0;
-
-      for (let i = 0; i < length; i++) {
-        let buffer = channelBuffer[i];
-
-        result.set(buffer, offset);
-        offset += buffer.length;
+    }, {
+      key: 'arrayBufferToString',
+      value: function arrayBufferToString(buffer) {
+        return String.fromCharCode.apply(null, new Uint16Array(buffer));
       }
+    }]);
 
-      return result;
-    }
-
-    /**
-     * @credit https://github.com/mattdiamond/Recorderjs
-     */
-    static writeUTFBytes(view, offset, string) {
-      const length = string.length;
-
-      for (let i = 0; i < length; i++) {
-        view.setUint8(offset + i, string.charCodeAt(i));
-      }
-    }
-
-    /**
-     * @credit https://developers.google.com/web/updates/2012/06/How-to-convert-ArrayBuffer-to-and-from-String?hl=en
-     */
-    static arrayBufferToString(buffer) {
-      return String.fromCharCode.apply(null, new Uint16Array(buffer));
-    }
-  }
+    return Helpers;
+  }();
 
   function observable(el) {
-    let callbacks = {};
+    var callbacks = {};
 
     el.on = function (name, fn) {
       if (typeof fn !== 'function') {
@@ -848,7 +964,7 @@
         return;
       }
 
-      const args = [].slice.call(arguments, 1);
+      var args = [].slice.call(arguments, 1);
 
       callbacks[name].forEach(function (fn, i) {
         if (fn) {
@@ -878,7 +994,7 @@
     });
   }
 
-  if (typeof window === 'object') {
+  if ((typeof window === 'undefined' ? 'undefined' : _typeof(window)) === 'object') {
     window.AVS = AVS;
   }
 })();
