@@ -709,7 +709,7 @@
 
 })();
 
-},{"./lib/AmazonErrorCodes":2,"./lib/Observable":3,"./lib/Player":4,"./lib/utils/arrayBufferToString":6,"./lib/utils/downsampleBuffer":7,"./lib/utils/interleave":8,"./lib/utils/mergeBuffers":9,"./lib/utils/writeUTFBytes":10,"buffer":16,"http-message-parser":11,"qs":12}],2:[function(require,module,exports){
+},{"./lib/AmazonErrorCodes":2,"./lib/Observable":3,"./lib/Player":4,"./lib/utils/arrayBufferToString":6,"./lib/utils/downsampleBuffer":7,"./lib/utils/interleave":8,"./lib/utils/mergeBuffers":9,"./lib/utils/writeUTFBytes":10,"buffer":12,"http-message-parser":13,"qs":16}],2:[function(require,module,exports){
 'use strict';
 
 module.exports = {
@@ -1139,806 +1139,117 @@ function writeUTFBytes(view, offset, string) {
 module.exports = writeUTFBytes;
 
 },{}],11:[function(require,module,exports){
-(function (global,Buffer){
-(function(root) {
-  'use strict';
+'use strict'
 
-  function httpMessageParser(message) {
-    const result = {
-      httpVersion: null,
-      statusCode: null,
-      statusMessage: null,
-      method: null,
-      url: null,
-      headers: null,
-      body: null,
-      boundary: null,
-      multipart: null
-    };
+exports.toByteArray = toByteArray
+exports.fromByteArray = fromByteArray
 
-    var messageString = '';
-    var headerNewlineIndex = 0;
-    var fullBoundary = null;
+var lookup = []
+var revLookup = []
+var Arr = typeof Uint8Array !== 'undefined' ? Uint8Array : Array
 
-    if (httpMessageParser._isBuffer(message)) {
-      messageString = message.toString();
-    } else if (typeof message === 'string') {
-      messageString = message;
-      message = httpMessageParser._createBuffer(messageString);
-    } else {
-      return result;
-    }
-
-    /*
-     * Strip extra return characters
-     */
-    messageString = messageString.replace(/\r\n/gim, '\n');
-
-    /*
-     * Trim leading whitespace
-     */
-    (function() {
-      const firstNonWhitespaceRegex = /[\w-]+/gim;
-      const firstNonWhitespaceIndex = messageString.search(firstNonWhitespaceRegex);
-      if (firstNonWhitespaceIndex > 0) {
-        message = message.slice(firstNonWhitespaceIndex, message.length);
-        messageString = message.toString();
-      }
-    })();
-
-    /* Parse request line
-     */
-    (function() {
-      const possibleRequestLine = messageString.split(/\n|\r\n/)[0];
-      const requestLineMatch = possibleRequestLine.match(httpMessageParser._requestLineRegex);
-
-      if (Array.isArray(requestLineMatch) && requestLineMatch.length > 1) {
-        result.httpVersion = parseFloat(requestLineMatch[1]);
-        result.statusCode = parseInt(requestLineMatch[2]);
-        result.statusMessage = requestLineMatch[3];
-      } else {
-        const responseLineMath = possibleRequestLine.match(httpMessageParser._responseLineRegex);
-        if (Array.isArray(responseLineMath) && responseLineMath.length > 1) {
-          result.method = responseLineMath[1];
-          result.url = responseLineMath[2];
-          result.httpVersion = parseFloat(responseLineMath[3]);
-        }
-      }
-    })();
-
-    /* Parse headers
-     */
-    (function() {
-      headerNewlineIndex = messageString.search(httpMessageParser._headerNewlineRegex);
-      if (headerNewlineIndex > -1) {
-        headerNewlineIndex = headerNewlineIndex + 1; // 1 for newline length
-      } else {
-        /* There's no line breaks so check if request line exists
-         * because the message might be all headers and no body
-         */
-        if (result.httpVersion) {
-          headerNewlineIndex = messageString.length;
-        }
-      }
-
-      const headersString = messageString.substr(0, headerNewlineIndex);
-      const headers = httpMessageParser._parseHeaders(headersString);
-
-      if (Object.keys(headers).length > 0) {
-        result.headers = headers;
-
-        // TOOD: extract boundary.
-      }
-    })();
-
-    /* Try to get boundary if no boundary header
-     */
-    (function() {
-      if (!result.boundary) {
-        const boundaryMatch = messageString.match(httpMessageParser._boundaryRegex);
-
-        if (Array.isArray(boundaryMatch) && boundaryMatch.length) {
-          fullBoundary = boundaryMatch[0].replace(/[\r\n]+/gi, '');
-          const boundary = fullBoundary.replace(/^--/,'');
-          result.boundary = boundary;
-        }
-      }
-    })();
-
-    /* Parse body
-     */
-    (function() {
-      var start = headerNewlineIndex;
-      var end = message.length;
-      const firstBoundaryIndex = messageString.indexOf(fullBoundary);
-
-      if (firstBoundaryIndex > -1) {
-        start = headerNewlineIndex;
-        end = firstBoundaryIndex;
-      }
-
-      if (headerNewlineIndex > -1) {
-        const body = message.slice(start, end);
-
-        if (body && body.length) {
-          result.body = httpMessageParser._isFakeBuffer(body) ? body.toString() : body;
-        }
-      }
-    })();
-
-    /* Parse multipart sections
-     */
-    (function() {
-      if (result.boundary) {
-        const multipartStart = messageString.indexOf(fullBoundary) + fullBoundary.length;
-        const multipartEnd = messageString.lastIndexOf(fullBoundary);
-        const multipartBody = messageString.substr(multipartStart, multipartEnd);
-        const parts = multipartBody.split(fullBoundary);
-
-        result.multipart = parts.filter(httpMessageParser._isTruthy).map(function(part, i) {
-          const result = {
-            headers: null,
-            body: null
-          };
-
-          const newlineRegex = /\n\n|\r\n\r\n/gim;
-          var newlineIndex = 0;
-          var newlineMatch = newlineRegex.exec(part);
-          var body = null;
-
-          if (newlineMatch) {
-            newlineIndex = newlineMatch.index;
-            if (newlineMatch.index <= 0) {
-              newlineMatch = newlineRegex.exec(part);
-              if (newlineMatch) {
-                newlineIndex = newlineMatch.index;
-              }
-            }
-          }
-
-          const possibleHeadersString = part.substr(0, newlineIndex);
-
-          if (newlineIndex > -1) {
-            const headers = httpMessageParser._parseHeaders(possibleHeadersString);
-            if (Object.keys(headers).length > 0) {
-              result.headers = headers;
-
-              var boundaryIndexes = [];
-              for (var j = 0; j < message.length; j++) {
-                var boundaryMatch = message.slice(j, j + fullBoundary.length).toString();
-
-                if (boundaryMatch === fullBoundary) {
-                  boundaryIndexes.push(j);
-                }
-              }
-
-              var boundaryNewlineIndexes = [];
-              boundaryIndexes.slice(0, boundaryIndexes.length - 1).forEach(function(m, k) {
-                const partBody = message.slice(boundaryIndexes[k], boundaryIndexes[k + 1]).toString();
-                var headerNewlineIndex = partBody.search(/\n\n|\r\n\r\n/gim) + 2;
-                headerNewlineIndex  = boundaryIndexes[k] + headerNewlineIndex;
-                boundaryNewlineIndexes.push(headerNewlineIndex);
-              });
-
-              body = message.slice(boundaryNewlineIndexes[i], boundaryIndexes[i + 1]);
-            } else {
-              body = part;
-            }
-          } else {
-            body = part;
-          }
-
-          result.body = httpMessageParser._isFakeBuffer(body) ? body.toString() : body;
-
-          return result;
-        });
-      }
-    })();
-
-    return result;
+function init () {
+  var code = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
+  for (var i = 0, len = code.length; i < len; ++i) {
+    lookup[i] = code[i]
+    revLookup[code.charCodeAt(i)] = i
   }
 
-  httpMessageParser._isTruthy = function _isTruthy(v) {
-    return !!v;
-  };
+  revLookup['-'.charCodeAt(0)] = 62
+  revLookup['_'.charCodeAt(0)] = 63
+}
 
-  httpMessageParser._isNumeric = function _isNumeric(v) {
-    if (typeof v === 'number' && !isNaN(v)) {
-      return true;
-    }
+init()
 
-    v = (v||'').toString().trim();
+function toByteArray (b64) {
+  var i, j, l, tmp, placeHolders, arr
+  var len = b64.length
 
-    if (!v) {
-      return false;
-    }
-
-    return !isNaN(v);
-  };
-
-  httpMessageParser._isBuffer = function(item) {
-    return ((httpMessageParser._isNodeBufferSupported() &&
-            typeof global === 'object' &&
-            global.Buffer.isBuffer(item)) ||
-            (item instanceof Object &&
-             item._isBuffer));
-  };
-
-  httpMessageParser._isNodeBufferSupported = function() {
-    return (typeof global === 'object' &&
-            typeof global.Buffer === 'function' &&
-            typeof global.Buffer.isBuffer === 'function');
-  };
-
-  httpMessageParser._parseHeaders = function _parseHeaders(body) {
-    const headers = {};
-
-    if (typeof body !== 'string') {
-      return headers;
-    }
-
-    body.split(/[\r\n]/).forEach(function(string) {
-      const match = string.match(/([\w-]+):\s*(.*)/i);
-
-      if (Array.isArray(match) && match.length === 3) {
-        const key = match[1];
-        const value = match[2];
-
-        headers[key] = httpMessageParser._isNumeric(value) ? Number(value) : value;
-      }
-    });
-
-    return headers;
-  };
-
-  httpMessageParser._requestLineRegex = /HTTP\/(1\.0|1\.1|2\.0)\s+(\d+)\s+([\w\s-_]+)/i;
-  httpMessageParser._responseLineRegex = /(GET|POST|PUT|DELETE|PATCH|OPTIONS|HEAD|TRACE|CONNECT)\s+(.*)\s+HTTP\/(1\.0|1\.1|2\.0)/i;
-  httpMessageParser._headerNewlineRegex = /^[\r\n]+/gim;
-  httpMessageParser._boundaryRegex = /(\n|\r\n)+--[\w-]+(\n|\r\n)+/g;
-
-  httpMessageParser._createBuffer = function(data) {
-    if (httpMessageParser._isNodeBufferSupported()) {
-      return new Buffer(data);
-    }
-
-    return new httpMessageParser._FakeBuffer(data);
-  };
-
-  httpMessageParser._isFakeBuffer = function isFakeBuffer(obj) {
-    return obj instanceof httpMessageParser._FakeBuffer;
-  };
-
-  httpMessageParser._FakeBuffer = function FakeBuffer(data) {
-    if (!(this instanceof httpMessageParser._FakeBuffer)) {
-      return new httpMessageParser._FakeBuffer(data);
-    }
-
-    this.data = [];
-
-    if (Array.isArray(data)) {
-      this.data = data;
-    } else if (typeof data === 'string') {
-      this.data = [].slice.call(data);
-    }
-
-    function LiveObject() {}
-    Object.defineProperty(LiveObject.prototype, 'length', {
-      get: function() {
-        return this.data.length;
-      }.bind(this)
-    });
-
-    this.length = (new LiveObject()).length;
-  };
-
-  httpMessageParser._FakeBuffer.prototype.slice = function slice() {
-    var newArray = [].slice.apply(this.data, arguments);
-    return new httpMessageParser._FakeBuffer(newArray);
-  };
-
-  httpMessageParser._FakeBuffer.prototype.search = function search() {
-    return [].search.apply(this.data, arguments);
-  };
-
-  httpMessageParser._FakeBuffer.prototype.indexOf = function indexOf() {
-    return [].indexOf.apply(this.data, arguments);
-  };
-
-  httpMessageParser._FakeBuffer.prototype.toString = function toString() {
-    return this.data.join('');
-  };
-
-  if (typeof exports !== 'undefined') {
-    if (typeof module !== 'undefined' && module.exports) {
-      exports = module.exports = httpMessageParser;
-    }
-    exports.httpMessageParser = httpMessageParser;
-  } else if (typeof define === 'function' && define.amd) {
-    define([], function() {
-      return httpMessageParser;
-    });
-  } else {
-    root.httpMessageParser = httpMessageParser;
+  if (len % 4 > 0) {
+    throw new Error('Invalid string. Length must be a multiple of 4')
   }
 
-})(this);
-
-}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {},require("buffer").Buffer)
-},{"buffer":16}],12:[function(require,module,exports){
-'use strict';
-
-var Stringify = require('./stringify');
-var Parse = require('./parse');
-
-module.exports = {
-    stringify: Stringify,
-    parse: Parse
-};
-
-},{"./parse":13,"./stringify":14}],13:[function(require,module,exports){
-'use strict';
-
-var Utils = require('./utils');
-
-var internals = {
-    delimiter: '&',
-    depth: 5,
-    arrayLimit: 20,
-    parameterLimit: 1000,
-    strictNullHandling: false,
-    plainObjects: false,
-    allowPrototypes: false,
-    allowDots: false
-};
-
-internals.parseValues = function (str, options) {
-    var obj = {};
-    var parts = str.split(options.delimiter, options.parameterLimit === Infinity ? undefined : options.parameterLimit);
-
-    for (var i = 0; i < parts.length; ++i) {
-        var part = parts[i];
-        var pos = part.indexOf(']=') === -1 ? part.indexOf('=') : part.indexOf(']=') + 1;
-
-        if (pos === -1) {
-            obj[Utils.decode(part)] = '';
-
-            if (options.strictNullHandling) {
-                obj[Utils.decode(part)] = null;
-            }
-        } else {
-            var key = Utils.decode(part.slice(0, pos));
-            var val = Utils.decode(part.slice(pos + 1));
-
-            if (Object.prototype.hasOwnProperty.call(obj, key)) {
-                obj[key] = [].concat(obj[key]).concat(val);
-            } else {
-                obj[key] = val;
-            }
-        }
-    }
-
-    return obj;
-};
-
-internals.parseObject = function (chain, val, options) {
-    if (!chain.length) {
-        return val;
-    }
-
-    var root = chain.shift();
-
-    var obj;
-    if (root === '[]') {
-        obj = [];
-        obj = obj.concat(internals.parseObject(chain, val, options));
-    } else {
-        obj = options.plainObjects ? Object.create(null) : {};
-        var cleanRoot = root[0] === '[' && root[root.length - 1] === ']' ? root.slice(1, root.length - 1) : root;
-        var index = parseInt(cleanRoot, 10);
-        if (
-            !isNaN(index) &&
-            root !== cleanRoot &&
-            String(index) === cleanRoot &&
-            index >= 0 &&
-            (options.parseArrays && index <= options.arrayLimit)
-        ) {
-            obj = [];
-            obj[index] = internals.parseObject(chain, val, options);
-        } else {
-            obj[cleanRoot] = internals.parseObject(chain, val, options);
-        }
-    }
-
-    return obj;
-};
-
-internals.parseKeys = function (givenKey, val, options) {
-    if (!givenKey) {
-        return;
-    }
-
-    // Transform dot notation to bracket notation
-    var key = options.allowDots ? givenKey.replace(/\.([^\.\[]+)/g, '[$1]') : givenKey;
-
-    // The regex chunks
-
-    var parent = /^([^\[\]]*)/;
-    var child = /(\[[^\[\]]*\])/g;
-
-    // Get the parent
-
-    var segment = parent.exec(key);
-
-    // Stash the parent if it exists
-
-    var keys = [];
-    if (segment[1]) {
-        // If we aren't using plain objects, optionally prefix keys
-        // that would overwrite object prototype properties
-        if (!options.plainObjects && Object.prototype.hasOwnProperty(segment[1])) {
-            if (!options.allowPrototypes) {
-                return;
-            }
-        }
-
-        keys.push(segment[1]);
-    }
-
-    // Loop through children appending to the array until we hit depth
-
-    var i = 0;
-    while ((segment = child.exec(key)) !== null && i < options.depth) {
-        i += 1;
-        if (!options.plainObjects && Object.prototype.hasOwnProperty(segment[1].replace(/\[|\]/g, ''))) {
-            if (!options.allowPrototypes) {
-                continue;
-            }
-        }
-        keys.push(segment[1]);
-    }
-
-    // If there's a remainder, just add whatever is left
-
-    if (segment) {
-        keys.push('[' + key.slice(segment.index) + ']');
-    }
-
-    return internals.parseObject(keys, val, options);
-};
-
-module.exports = function (str, opts) {
-    var options = opts || {};
-    options.delimiter = typeof options.delimiter === 'string' || Utils.isRegExp(options.delimiter) ? options.delimiter : internals.delimiter;
-    options.depth = typeof options.depth === 'number' ? options.depth : internals.depth;
-    options.arrayLimit = typeof options.arrayLimit === 'number' ? options.arrayLimit : internals.arrayLimit;
-    options.parseArrays = options.parseArrays !== false;
-    options.allowDots = typeof options.allowDots === 'boolean' ? options.allowDots : internals.allowDots;
-    options.plainObjects = typeof options.plainObjects === 'boolean' ? options.plainObjects : internals.plainObjects;
-    options.allowPrototypes = typeof options.allowPrototypes === 'boolean' ? options.allowPrototypes : internals.allowPrototypes;
-    options.parameterLimit = typeof options.parameterLimit === 'number' ? options.parameterLimit : internals.parameterLimit;
-    options.strictNullHandling = typeof options.strictNullHandling === 'boolean' ? options.strictNullHandling : internals.strictNullHandling;
-
-    if (
-        str === '' ||
-        str === null ||
-        typeof str === 'undefined'
-    ) {
-        return options.plainObjects ? Object.create(null) : {};
-    }
-
-    var tempObj = typeof str === 'string' ? internals.parseValues(str, options) : str;
-    var obj = options.plainObjects ? Object.create(null) : {};
-
-    // Iterate over the keys and setup the new object
-
-    var keys = Object.keys(tempObj);
-    for (var i = 0; i < keys.length; ++i) {
-        var key = keys[i];
-        var newObj = internals.parseKeys(key, tempObj[key], options);
-        obj = Utils.merge(obj, newObj, options);
-    }
-
-    return Utils.compact(obj);
-};
-
-},{"./utils":15}],14:[function(require,module,exports){
-'use strict';
-
-var Utils = require('./utils');
-
-var internals = {
-    delimiter: '&',
-    arrayPrefixGenerators: {
-        brackets: function (prefix) {
-            return prefix + '[]';
-        },
-        indices: function (prefix, key) {
-            return prefix + '[' + key + ']';
-        },
-        repeat: function (prefix) {
-            return prefix;
-        }
-    },
-    strictNullHandling: false,
-    skipNulls: false,
-    encode: true
-};
-
-internals.stringify = function (object, prefix, generateArrayPrefix, strictNullHandling, skipNulls, encode, filter, sort, allowDots) {
-    var obj = object;
-    if (typeof filter === 'function') {
-        obj = filter(prefix, obj);
-    } else if (Utils.isBuffer(obj)) {
-        obj = String(obj);
-    } else if (obj instanceof Date) {
-        obj = obj.toISOString();
-    } else if (obj === null) {
-        if (strictNullHandling) {
-            return encode ? Utils.encode(prefix) : prefix;
-        }
-
-        obj = '';
-    }
-
-    if (typeof obj === 'string' || typeof obj === 'number' || typeof obj === 'boolean') {
-        if (encode) {
-            return [Utils.encode(prefix) + '=' + Utils.encode(obj)];
-        }
-        return [prefix + '=' + obj];
-    }
-
-    var values = [];
-
-    if (typeof obj === 'undefined') {
-        return values;
-    }
-
-    var objKeys;
-    if (Array.isArray(filter)) {
-        objKeys = filter;
-    } else {
-        var keys = Object.keys(obj);
-        objKeys = sort ? keys.sort(sort) : keys;
-    }
-
-    for (var i = 0; i < objKeys.length; ++i) {
-        var key = objKeys[i];
-
-        if (skipNulls && obj[key] === null) {
-            continue;
-        }
-
-        if (Array.isArray(obj)) {
-            values = values.concat(internals.stringify(obj[key], generateArrayPrefix(prefix, key), generateArrayPrefix, strictNullHandling, skipNulls, encode, filter, sort, allowDots));
-        } else {
-            values = values.concat(internals.stringify(obj[key], prefix + (allowDots ? '.' + key : '[' + key + ']'), generateArrayPrefix, strictNullHandling, skipNulls, encode, filter, sort, allowDots));
-        }
-    }
-
-    return values;
-};
-
-module.exports = function (object, opts) {
-    var obj = object;
-    var options = opts || {};
-    var delimiter = typeof options.delimiter === 'undefined' ? internals.delimiter : options.delimiter;
-    var strictNullHandling = typeof options.strictNullHandling === 'boolean' ? options.strictNullHandling : internals.strictNullHandling;
-    var skipNulls = typeof options.skipNulls === 'boolean' ? options.skipNulls : internals.skipNulls;
-    var encode = typeof options.encode === 'boolean' ? options.encode : internals.encode;
-    var sort = typeof options.sort === 'function' ? options.sort : null;
-    var allowDots = typeof options.allowDots === 'undefined' ? false : options.allowDots;
-    var objKeys;
-    var filter;
-    if (typeof options.filter === 'function') {
-        filter = options.filter;
-        obj = filter('', obj);
-    } else if (Array.isArray(options.filter)) {
-        objKeys = filter = options.filter;
-    }
-
-    var keys = [];
-
-    if (typeof obj !== 'object' || obj === null) {
-        return '';
-    }
-
-    var arrayFormat;
-    if (options.arrayFormat in internals.arrayPrefixGenerators) {
-        arrayFormat = options.arrayFormat;
-    } else if ('indices' in options) {
-        arrayFormat = options.indices ? 'indices' : 'repeat';
-    } else {
-        arrayFormat = 'indices';
-    }
-
-    var generateArrayPrefix = internals.arrayPrefixGenerators[arrayFormat];
-
-    if (!objKeys) {
-        objKeys = Object.keys(obj);
-    }
-
-    if (sort) {
-        objKeys.sort(sort);
-    }
-
-    for (var i = 0; i < objKeys.length; ++i) {
-        var key = objKeys[i];
-
-        if (skipNulls && obj[key] === null) {
-            continue;
-        }
-
-        keys = keys.concat(internals.stringify(obj[key], key, generateArrayPrefix, strictNullHandling, skipNulls, encode, filter, sort, allowDots));
-    }
-
-    return keys.join(delimiter);
-};
-
-},{"./utils":15}],15:[function(require,module,exports){
-'use strict';
-
-var hexTable = (function () {
-    var array = new Array(256);
-    for (var i = 0; i < 256; ++i) {
-        array[i] = '%' + ((i < 16 ? '0' : '') + i.toString(16)).toUpperCase();
-    }
-
-    return array;
-}());
-
-exports.arrayToObject = function (source, options) {
-    var obj = options.plainObjects ? Object.create(null) : {};
-    for (var i = 0; i < source.length; ++i) {
-        if (typeof source[i] !== 'undefined') {
-            obj[i] = source[i];
-        }
-    }
-
-    return obj;
-};
-
-exports.merge = function (target, source, options) {
-    if (!source) {
-        return target;
-    }
-
-    if (typeof source !== 'object') {
-        if (Array.isArray(target)) {
-            target.push(source);
-        } else if (typeof target === 'object') {
-            target[source] = true;
-        } else {
-            return [target, source];
-        }
-
-        return target;
-    }
-
-    if (typeof target !== 'object') {
-        return [target].concat(source);
-    }
-
-    var mergeTarget = target;
-    if (Array.isArray(target) && !Array.isArray(source)) {
-        mergeTarget = exports.arrayToObject(target, options);
-    }
-
-	return Object.keys(source).reduce(function (acc, key) {
-        var value = source[key];
-
-        if (Object.prototype.hasOwnProperty.call(acc, key)) {
-            acc[key] = exports.merge(acc[key], value, options);
-        } else {
-            acc[key] = value;
-        }
-		return acc;
-    }, mergeTarget);
-};
-
-exports.decode = function (str) {
-    try {
-        return decodeURIComponent(str.replace(/\+/g, ' '));
-    } catch (e) {
-        return str;
-    }
-};
-
-exports.encode = function (str) {
-    // This code was originally written by Brian White (mscdex) for the io.js core querystring library.
-    // It has been adapted here for stricter adherence to RFC 3986
-    if (str.length === 0) {
-        return str;
-    }
-
-    var string = typeof str === 'string' ? str : String(str);
-
-    var out = '';
-    for (var i = 0; i < string.length; ++i) {
-        var c = string.charCodeAt(i);
-
-        if (
-            c === 0x2D || // -
-            c === 0x2E || // .
-            c === 0x5F || // _
-            c === 0x7E || // ~
-            (c >= 0x30 && c <= 0x39) || // 0-9
-            (c >= 0x41 && c <= 0x5A) || // a-z
-            (c >= 0x61 && c <= 0x7A) // A-Z
-        ) {
-            out += string.charAt(i);
-            continue;
-        }
-
-        if (c < 0x80) {
-            out = out + hexTable[c];
-            continue;
-        }
-
-        if (c < 0x800) {
-            out = out + (hexTable[0xC0 | (c >> 6)] + hexTable[0x80 | (c & 0x3F)]);
-            continue;
-        }
-
-        if (c < 0xD800 || c >= 0xE000) {
-            out = out + (hexTable[0xE0 | (c >> 12)] + hexTable[0x80 | ((c >> 6) & 0x3F)] + hexTable[0x80 | (c & 0x3F)]);
-            continue;
-        }
-
-        i += 1;
-        c = 0x10000 + (((c & 0x3FF) << 10) | (string.charCodeAt(i) & 0x3FF));
-        out += (hexTable[0xF0 | (c >> 18)] + hexTable[0x80 | ((c >> 12) & 0x3F)] + hexTable[0x80 | ((c >> 6) & 0x3F)] + hexTable[0x80 | (c & 0x3F)]);
-    }
-
-    return out;
-};
-
-exports.compact = function (obj, references) {
-    if (typeof obj !== 'object' || obj === null) {
-        return obj;
-    }
-
-    var refs = references || [];
-    var lookup = refs.indexOf(obj);
-    if (lookup !== -1) {
-        return refs[lookup];
-    }
-
-    refs.push(obj);
-
-    if (Array.isArray(obj)) {
-        var compacted = [];
-
-        for (var i = 0; i < obj.length; ++i) {
-            if (typeof obj[i] !== 'undefined') {
-                compacted.push(obj[i]);
-            }
-        }
-
-        return compacted;
-    }
-
-    var keys = Object.keys(obj);
-    for (var j = 0; j < keys.length; ++j) {
-        var key = keys[j];
-        obj[key] = exports.compact(obj[key], refs);
-    }
-
-    return obj;
-};
-
-exports.isRegExp = function (obj) {
-    return Object.prototype.toString.call(obj) === '[object RegExp]';
-};
-
-exports.isBuffer = function (obj) {
-    if (obj === null || typeof obj === 'undefined') {
-        return false;
-    }
-
-    return !!(obj.constructor && obj.constructor.isBuffer && obj.constructor.isBuffer(obj));
-};
-
-},{}],16:[function(require,module,exports){
+  // the number of equal signs (place holders)
+  // if there are two placeholders, than the two characters before it
+  // represent one byte
+  // if there is only one, then the three characters before it represent 2 bytes
+  // this is just a cheap hack to not do indexOf twice
+  placeHolders = b64[len - 2] === '=' ? 2 : b64[len - 1] === '=' ? 1 : 0
+
+  // base64 is 4/3 + up to two characters of the original data
+  arr = new Arr(len * 3 / 4 - placeHolders)
+
+  // if there are placeholders, only get up to the last complete 4 chars
+  l = placeHolders > 0 ? len - 4 : len
+
+  var L = 0
+
+  for (i = 0, j = 0; i < l; i += 4, j += 3) {
+    tmp = (revLookup[b64.charCodeAt(i)] << 18) | (revLookup[b64.charCodeAt(i + 1)] << 12) | (revLookup[b64.charCodeAt(i + 2)] << 6) | revLookup[b64.charCodeAt(i + 3)]
+    arr[L++] = (tmp >> 16) & 0xFF
+    arr[L++] = (tmp >> 8) & 0xFF
+    arr[L++] = tmp & 0xFF
+  }
+
+  if (placeHolders === 2) {
+    tmp = (revLookup[b64.charCodeAt(i)] << 2) | (revLookup[b64.charCodeAt(i + 1)] >> 4)
+    arr[L++] = tmp & 0xFF
+  } else if (placeHolders === 1) {
+    tmp = (revLookup[b64.charCodeAt(i)] << 10) | (revLookup[b64.charCodeAt(i + 1)] << 4) | (revLookup[b64.charCodeAt(i + 2)] >> 2)
+    arr[L++] = (tmp >> 8) & 0xFF
+    arr[L++] = tmp & 0xFF
+  }
+
+  return arr
+}
+
+function tripletToBase64 (num) {
+  return lookup[num >> 18 & 0x3F] + lookup[num >> 12 & 0x3F] + lookup[num >> 6 & 0x3F] + lookup[num & 0x3F]
+}
+
+function encodeChunk (uint8, start, end) {
+  var tmp
+  var output = []
+  for (var i = start; i < end; i += 3) {
+    tmp = (uint8[i] << 16) + (uint8[i + 1] << 8) + (uint8[i + 2])
+    output.push(tripletToBase64(tmp))
+  }
+  return output.join('')
+}
+
+function fromByteArray (uint8) {
+  var tmp
+  var len = uint8.length
+  var extraBytes = len % 3 // if we have 1 byte left, pad 2 bytes
+  var output = ''
+  var parts = []
+  var maxChunkLength = 16383 // must be multiple of 3
+
+  // go through the array every three bytes, we'll deal with trailing stuff later
+  for (var i = 0, len2 = len - extraBytes; i < len2; i += maxChunkLength) {
+    parts.push(encodeChunk(uint8, i, (i + maxChunkLength) > len2 ? len2 : (i + maxChunkLength)))
+  }
+
+  // pad the end with zeros, but make sure to not forget the extra bytes
+  if (extraBytes === 1) {
+    tmp = uint8[len - 1]
+    output += lookup[tmp >> 2]
+    output += lookup[(tmp << 4) & 0x3F]
+    output += '=='
+  } else if (extraBytes === 2) {
+    tmp = (uint8[len - 2] << 8) + (uint8[len - 1])
+    output += lookup[tmp >> 10]
+    output += lookup[(tmp >> 4) & 0x3F]
+    output += lookup[(tmp << 2) & 0x3F]
+    output += '='
+  }
+
+  parts.push(output)
+
+  return parts.join('')
+}
+
+},{}],12:[function(require,module,exports){
 (function (global){
 /*!
  * The buffer module from node.js, for the browser.
@@ -3398,118 +2709,333 @@ function blitBuffer (src, dst, offset, length) {
 }
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"base64-js":17,"ieee754":18,"isarray":19}],17:[function(require,module,exports){
-'use strict'
+},{"base64-js":11,"ieee754":14,"isarray":15}],13:[function(require,module,exports){
+(function (global,Buffer){
+(function(root) {
+  'use strict';
 
-exports.toByteArray = toByteArray
-exports.fromByteArray = fromByteArray
+  function httpMessageParser(message) {
+    const result = {
+      httpVersion: null,
+      statusCode: null,
+      statusMessage: null,
+      method: null,
+      url: null,
+      headers: null,
+      body: null,
+      boundary: null,
+      multipart: null
+    };
 
-var lookup = []
-var revLookup = []
-var Arr = typeof Uint8Array !== 'undefined' ? Uint8Array : Array
+    var messageString = '';
+    var headerNewlineIndex = 0;
+    var fullBoundary = null;
 
-function init () {
-  var code = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
-  for (var i = 0, len = code.length; i < len; ++i) {
-    lookup[i] = code[i]
-    revLookup[code.charCodeAt(i)] = i
+    if (httpMessageParser._isBuffer(message)) {
+      messageString = message.toString();
+    } else if (typeof message === 'string') {
+      messageString = message;
+      message = httpMessageParser._createBuffer(messageString);
+    } else {
+      return result;
+    }
+
+    /*
+     * Strip extra return characters
+     */
+    messageString = messageString.replace(/\r\n/gim, '\n');
+
+    /*
+     * Trim leading whitespace
+     */
+    (function() {
+      const firstNonWhitespaceRegex = /[\w-]+/gim;
+      const firstNonWhitespaceIndex = messageString.search(firstNonWhitespaceRegex);
+      if (firstNonWhitespaceIndex > 0) {
+        message = message.slice(firstNonWhitespaceIndex, message.length);
+        messageString = message.toString();
+      }
+    })();
+
+    /* Parse request line
+     */
+    (function() {
+      const possibleRequestLine = messageString.split(/\n|\r\n/)[0];
+      const requestLineMatch = possibleRequestLine.match(httpMessageParser._requestLineRegex);
+
+      if (Array.isArray(requestLineMatch) && requestLineMatch.length > 1) {
+        result.httpVersion = parseFloat(requestLineMatch[1]);
+        result.statusCode = parseInt(requestLineMatch[2]);
+        result.statusMessage = requestLineMatch[3];
+      } else {
+        const responseLineMath = possibleRequestLine.match(httpMessageParser._responseLineRegex);
+        if (Array.isArray(responseLineMath) && responseLineMath.length > 1) {
+          result.method = responseLineMath[1];
+          result.url = responseLineMath[2];
+          result.httpVersion = parseFloat(responseLineMath[3]);
+        }
+      }
+    })();
+
+    /* Parse headers
+     */
+    (function() {
+      headerNewlineIndex = messageString.search(httpMessageParser._headerNewlineRegex);
+      if (headerNewlineIndex > -1) {
+        headerNewlineIndex = headerNewlineIndex + 1; // 1 for newline length
+      } else {
+        /* There's no line breaks so check if request line exists
+         * because the message might be all headers and no body
+         */
+        if (result.httpVersion) {
+          headerNewlineIndex = messageString.length;
+        }
+      }
+
+      const headersString = messageString.substr(0, headerNewlineIndex);
+      const headers = httpMessageParser._parseHeaders(headersString);
+
+      if (Object.keys(headers).length > 0) {
+        result.headers = headers;
+
+        // TOOD: extract boundary.
+      }
+    })();
+
+    /* Try to get boundary if no boundary header
+     */
+    (function() {
+      if (!result.boundary) {
+        const boundaryMatch = messageString.match(httpMessageParser._boundaryRegex);
+
+        if (Array.isArray(boundaryMatch) && boundaryMatch.length) {
+          fullBoundary = boundaryMatch[0].replace(/[\r\n]+/gi, '');
+          const boundary = fullBoundary.replace(/^--/,'');
+          result.boundary = boundary;
+        }
+      }
+    })();
+
+    /* Parse body
+     */
+    (function() {
+      var start = headerNewlineIndex;
+      var end = message.length;
+      const firstBoundaryIndex = messageString.indexOf(fullBoundary);
+
+      if (firstBoundaryIndex > -1) {
+        start = headerNewlineIndex;
+        end = firstBoundaryIndex;
+      }
+
+      if (headerNewlineIndex > -1) {
+        const body = message.slice(start, end);
+
+        if (body && body.length) {
+          result.body = httpMessageParser._isFakeBuffer(body) ? body.toString() : body;
+        }
+      }
+    })();
+
+    /* Parse multipart sections
+     */
+    (function() {
+      if (result.boundary) {
+        const multipartStart = messageString.indexOf(fullBoundary) + fullBoundary.length;
+        const multipartEnd = messageString.lastIndexOf(fullBoundary);
+        const multipartBody = messageString.substr(multipartStart, multipartEnd);
+        const parts = multipartBody.split(fullBoundary);
+
+        result.multipart = parts.filter(httpMessageParser._isTruthy).map(function(part, i) {
+          const result = {
+            headers: null,
+            body: null
+          };
+
+          const newlineRegex = /\n\n|\r\n\r\n/gim;
+          var newlineIndex = 0;
+          var newlineMatch = newlineRegex.exec(part);
+          var body = null;
+
+          if (newlineMatch) {
+            newlineIndex = newlineMatch.index;
+            if (newlineMatch.index <= 0) {
+              newlineMatch = newlineRegex.exec(part);
+              if (newlineMatch) {
+                newlineIndex = newlineMatch.index;
+              }
+            }
+          }
+
+          const possibleHeadersString = part.substr(0, newlineIndex);
+
+          if (newlineIndex > -1) {
+            const headers = httpMessageParser._parseHeaders(possibleHeadersString);
+            if (Object.keys(headers).length > 0) {
+              result.headers = headers;
+
+              var boundaryIndexes = [];
+              for (var j = 0; j < message.length; j++) {
+                var boundaryMatch = message.slice(j, j + fullBoundary.length).toString();
+
+                if (boundaryMatch === fullBoundary) {
+                  boundaryIndexes.push(j);
+                }
+              }
+
+              var boundaryNewlineIndexes = [];
+              boundaryIndexes.slice(0, boundaryIndexes.length - 1).forEach(function(m, k) {
+                const partBody = message.slice(boundaryIndexes[k], boundaryIndexes[k + 1]).toString();
+                var headerNewlineIndex = partBody.search(/\n\n|\r\n\r\n/gim) + 2;
+                headerNewlineIndex  = boundaryIndexes[k] + headerNewlineIndex;
+                boundaryNewlineIndexes.push(headerNewlineIndex);
+              });
+
+              body = message.slice(boundaryNewlineIndexes[i], boundaryIndexes[i + 1]);
+            } else {
+              body = part;
+            }
+          } else {
+            body = part;
+          }
+
+          result.body = httpMessageParser._isFakeBuffer(body) ? body.toString() : body;
+
+          return result;
+        });
+      }
+    })();
+
+    return result;
   }
 
-  revLookup['-'.charCodeAt(0)] = 62
-  revLookup['_'.charCodeAt(0)] = 63
-}
+  httpMessageParser._isTruthy = function _isTruthy(v) {
+    return !!v;
+  };
 
-init()
+  httpMessageParser._isNumeric = function _isNumeric(v) {
+    if (typeof v === 'number' && !isNaN(v)) {
+      return true;
+    }
 
-function toByteArray (b64) {
-  var i, j, l, tmp, placeHolders, arr
-  var len = b64.length
+    v = (v||'').toString().trim();
 
-  if (len % 4 > 0) {
-    throw new Error('Invalid string. Length must be a multiple of 4')
+    if (!v) {
+      return false;
+    }
+
+    return !isNaN(v);
+  };
+
+  httpMessageParser._isBuffer = function(item) {
+    return ((httpMessageParser._isNodeBufferSupported() &&
+            typeof global === 'object' &&
+            global.Buffer.isBuffer(item)) ||
+            (item instanceof Object &&
+             item._isBuffer));
+  };
+
+  httpMessageParser._isNodeBufferSupported = function() {
+    return (typeof global === 'object' &&
+            typeof global.Buffer === 'function' &&
+            typeof global.Buffer.isBuffer === 'function');
+  };
+
+  httpMessageParser._parseHeaders = function _parseHeaders(body) {
+    const headers = {};
+
+    if (typeof body !== 'string') {
+      return headers;
+    }
+
+    body.split(/[\r\n]/).forEach(function(string) {
+      const match = string.match(/([\w-]+):\s*(.*)/i);
+
+      if (Array.isArray(match) && match.length === 3) {
+        const key = match[1];
+        const value = match[2];
+
+        headers[key] = httpMessageParser._isNumeric(value) ? Number(value) : value;
+      }
+    });
+
+    return headers;
+  };
+
+  httpMessageParser._requestLineRegex = /HTTP\/(1\.0|1\.1|2\.0)\s+(\d+)\s+([\w\s-_]+)/i;
+  httpMessageParser._responseLineRegex = /(GET|POST|PUT|DELETE|PATCH|OPTIONS|HEAD|TRACE|CONNECT)\s+(.*)\s+HTTP\/(1\.0|1\.1|2\.0)/i;
+  httpMessageParser._headerNewlineRegex = /^[\r\n]+/gim;
+  httpMessageParser._boundaryRegex = /(\n|\r\n)+--[\w-]+(\n|\r\n)+/g;
+
+  httpMessageParser._createBuffer = function(data) {
+    if (httpMessageParser._isNodeBufferSupported()) {
+      return new Buffer(data);
+    }
+
+    return new httpMessageParser._FakeBuffer(data);
+  };
+
+  httpMessageParser._isFakeBuffer = function isFakeBuffer(obj) {
+    return obj instanceof httpMessageParser._FakeBuffer;
+  };
+
+  httpMessageParser._FakeBuffer = function FakeBuffer(data) {
+    if (!(this instanceof httpMessageParser._FakeBuffer)) {
+      return new httpMessageParser._FakeBuffer(data);
+    }
+
+    this.data = [];
+
+    if (Array.isArray(data)) {
+      this.data = data;
+    } else if (typeof data === 'string') {
+      this.data = [].slice.call(data);
+    }
+
+    function LiveObject() {}
+    Object.defineProperty(LiveObject.prototype, 'length', {
+      get: function() {
+        return this.data.length;
+      }.bind(this)
+    });
+
+    this.length = (new LiveObject()).length;
+  };
+
+  httpMessageParser._FakeBuffer.prototype.slice = function slice() {
+    var newArray = [].slice.apply(this.data, arguments);
+    return new httpMessageParser._FakeBuffer(newArray);
+  };
+
+  httpMessageParser._FakeBuffer.prototype.search = function search() {
+    return [].search.apply(this.data, arguments);
+  };
+
+  httpMessageParser._FakeBuffer.prototype.indexOf = function indexOf() {
+    return [].indexOf.apply(this.data, arguments);
+  };
+
+  httpMessageParser._FakeBuffer.prototype.toString = function toString() {
+    return this.data.join('');
+  };
+
+  if (typeof exports !== 'undefined') {
+    if (typeof module !== 'undefined' && module.exports) {
+      exports = module.exports = httpMessageParser;
+    }
+    exports.httpMessageParser = httpMessageParser;
+  } else if (typeof define === 'function' && define.amd) {
+    define([], function() {
+      return httpMessageParser;
+    });
+  } else {
+    root.httpMessageParser = httpMessageParser;
   }
 
-  // the number of equal signs (place holders)
-  // if there are two placeholders, than the two characters before it
-  // represent one byte
-  // if there is only one, then the three characters before it represent 2 bytes
-  // this is just a cheap hack to not do indexOf twice
-  placeHolders = b64[len - 2] === '=' ? 2 : b64[len - 1] === '=' ? 1 : 0
+})(this);
 
-  // base64 is 4/3 + up to two characters of the original data
-  arr = new Arr(len * 3 / 4 - placeHolders)
-
-  // if there are placeholders, only get up to the last complete 4 chars
-  l = placeHolders > 0 ? len - 4 : len
-
-  var L = 0
-
-  for (i = 0, j = 0; i < l; i += 4, j += 3) {
-    tmp = (revLookup[b64.charCodeAt(i)] << 18) | (revLookup[b64.charCodeAt(i + 1)] << 12) | (revLookup[b64.charCodeAt(i + 2)] << 6) | revLookup[b64.charCodeAt(i + 3)]
-    arr[L++] = (tmp >> 16) & 0xFF
-    arr[L++] = (tmp >> 8) & 0xFF
-    arr[L++] = tmp & 0xFF
-  }
-
-  if (placeHolders === 2) {
-    tmp = (revLookup[b64.charCodeAt(i)] << 2) | (revLookup[b64.charCodeAt(i + 1)] >> 4)
-    arr[L++] = tmp & 0xFF
-  } else if (placeHolders === 1) {
-    tmp = (revLookup[b64.charCodeAt(i)] << 10) | (revLookup[b64.charCodeAt(i + 1)] << 4) | (revLookup[b64.charCodeAt(i + 2)] >> 2)
-    arr[L++] = (tmp >> 8) & 0xFF
-    arr[L++] = tmp & 0xFF
-  }
-
-  return arr
-}
-
-function tripletToBase64 (num) {
-  return lookup[num >> 18 & 0x3F] + lookup[num >> 12 & 0x3F] + lookup[num >> 6 & 0x3F] + lookup[num & 0x3F]
-}
-
-function encodeChunk (uint8, start, end) {
-  var tmp
-  var output = []
-  for (var i = start; i < end; i += 3) {
-    tmp = (uint8[i] << 16) + (uint8[i + 1] << 8) + (uint8[i + 2])
-    output.push(tripletToBase64(tmp))
-  }
-  return output.join('')
-}
-
-function fromByteArray (uint8) {
-  var tmp
-  var len = uint8.length
-  var extraBytes = len % 3 // if we have 1 byte left, pad 2 bytes
-  var output = ''
-  var parts = []
-  var maxChunkLength = 16383 // must be multiple of 3
-
-  // go through the array every three bytes, we'll deal with trailing stuff later
-  for (var i = 0, len2 = len - extraBytes; i < len2; i += maxChunkLength) {
-    parts.push(encodeChunk(uint8, i, (i + maxChunkLength) > len2 ? len2 : (i + maxChunkLength)))
-  }
-
-  // pad the end with zeros, but make sure to not forget the extra bytes
-  if (extraBytes === 1) {
-    tmp = uint8[len - 1]
-    output += lookup[tmp >> 2]
-    output += lookup[(tmp << 4) & 0x3F]
-    output += '=='
-  } else if (extraBytes === 2) {
-    tmp = (uint8[len - 2] << 8) + (uint8[len - 1])
-    output += lookup[tmp >> 10]
-    output += lookup[(tmp >> 4) & 0x3F]
-    output += lookup[(tmp << 2) & 0x3F]
-    output += '='
-  }
-
-  parts.push(output)
-
-  return parts.join('')
-}
-
-},{}],18:[function(require,module,exports){
+}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {},require("buffer").Buffer)
+},{"buffer":12}],14:[function(require,module,exports){
 exports.read = function (buffer, offset, isLE, mLen, nBytes) {
   var e, m
   var eLen = nBytes * 8 - mLen - 1
@@ -3595,11 +3121,485 @@ exports.write = function (buffer, value, offset, isLE, mLen, nBytes) {
   buffer[offset + i - d] |= s * 128
 }
 
-},{}],19:[function(require,module,exports){
+},{}],15:[function(require,module,exports){
 var toString = {}.toString;
 
 module.exports = Array.isArray || function (arr) {
   return toString.call(arr) == '[object Array]';
+};
+
+},{}],16:[function(require,module,exports){
+'use strict';
+
+var Stringify = require('./stringify');
+var Parse = require('./parse');
+
+module.exports = {
+    stringify: Stringify,
+    parse: Parse
+};
+
+},{"./parse":17,"./stringify":18}],17:[function(require,module,exports){
+'use strict';
+
+var Utils = require('./utils');
+
+var internals = {
+    delimiter: '&',
+    depth: 5,
+    arrayLimit: 20,
+    parameterLimit: 1000,
+    strictNullHandling: false,
+    plainObjects: false,
+    allowPrototypes: false,
+    allowDots: false
+};
+
+internals.parseValues = function (str, options) {
+    var obj = {};
+    var parts = str.split(options.delimiter, options.parameterLimit === Infinity ? undefined : options.parameterLimit);
+
+    for (var i = 0; i < parts.length; ++i) {
+        var part = parts[i];
+        var pos = part.indexOf(']=') === -1 ? part.indexOf('=') : part.indexOf(']=') + 1;
+
+        if (pos === -1) {
+            obj[Utils.decode(part)] = '';
+
+            if (options.strictNullHandling) {
+                obj[Utils.decode(part)] = null;
+            }
+        } else {
+            var key = Utils.decode(part.slice(0, pos));
+            var val = Utils.decode(part.slice(pos + 1));
+
+            if (Object.prototype.hasOwnProperty.call(obj, key)) {
+                obj[key] = [].concat(obj[key]).concat(val);
+            } else {
+                obj[key] = val;
+            }
+        }
+    }
+
+    return obj;
+};
+
+internals.parseObject = function (chain, val, options) {
+    if (!chain.length) {
+        return val;
+    }
+
+    var root = chain.shift();
+
+    var obj;
+    if (root === '[]') {
+        obj = [];
+        obj = obj.concat(internals.parseObject(chain, val, options));
+    } else {
+        obj = options.plainObjects ? Object.create(null) : {};
+        var cleanRoot = root[0] === '[' && root[root.length - 1] === ']' ? root.slice(1, root.length - 1) : root;
+        var index = parseInt(cleanRoot, 10);
+        if (
+            !isNaN(index) &&
+            root !== cleanRoot &&
+            String(index) === cleanRoot &&
+            index >= 0 &&
+            (options.parseArrays && index <= options.arrayLimit)
+        ) {
+            obj = [];
+            obj[index] = internals.parseObject(chain, val, options);
+        } else {
+            obj[cleanRoot] = internals.parseObject(chain, val, options);
+        }
+    }
+
+    return obj;
+};
+
+internals.parseKeys = function (givenKey, val, options) {
+    if (!givenKey) {
+        return;
+    }
+
+    // Transform dot notation to bracket notation
+    var key = options.allowDots ? givenKey.replace(/\.([^\.\[]+)/g, '[$1]') : givenKey;
+
+    // The regex chunks
+
+    var parent = /^([^\[\]]*)/;
+    var child = /(\[[^\[\]]*\])/g;
+
+    // Get the parent
+
+    var segment = parent.exec(key);
+
+    // Stash the parent if it exists
+
+    var keys = [];
+    if (segment[1]) {
+        // If we aren't using plain objects, optionally prefix keys
+        // that would overwrite object prototype properties
+        if (!options.plainObjects && Object.prototype.hasOwnProperty(segment[1])) {
+            if (!options.allowPrototypes) {
+                return;
+            }
+        }
+
+        keys.push(segment[1]);
+    }
+
+    // Loop through children appending to the array until we hit depth
+
+    var i = 0;
+    while ((segment = child.exec(key)) !== null && i < options.depth) {
+        i += 1;
+        if (!options.plainObjects && Object.prototype.hasOwnProperty(segment[1].replace(/\[|\]/g, ''))) {
+            if (!options.allowPrototypes) {
+                continue;
+            }
+        }
+        keys.push(segment[1]);
+    }
+
+    // If there's a remainder, just add whatever is left
+
+    if (segment) {
+        keys.push('[' + key.slice(segment.index) + ']');
+    }
+
+    return internals.parseObject(keys, val, options);
+};
+
+module.exports = function (str, opts) {
+    var options = opts || {};
+    options.delimiter = typeof options.delimiter === 'string' || Utils.isRegExp(options.delimiter) ? options.delimiter : internals.delimiter;
+    options.depth = typeof options.depth === 'number' ? options.depth : internals.depth;
+    options.arrayLimit = typeof options.arrayLimit === 'number' ? options.arrayLimit : internals.arrayLimit;
+    options.parseArrays = options.parseArrays !== false;
+    options.allowDots = typeof options.allowDots === 'boolean' ? options.allowDots : internals.allowDots;
+    options.plainObjects = typeof options.plainObjects === 'boolean' ? options.plainObjects : internals.plainObjects;
+    options.allowPrototypes = typeof options.allowPrototypes === 'boolean' ? options.allowPrototypes : internals.allowPrototypes;
+    options.parameterLimit = typeof options.parameterLimit === 'number' ? options.parameterLimit : internals.parameterLimit;
+    options.strictNullHandling = typeof options.strictNullHandling === 'boolean' ? options.strictNullHandling : internals.strictNullHandling;
+
+    if (
+        str === '' ||
+        str === null ||
+        typeof str === 'undefined'
+    ) {
+        return options.plainObjects ? Object.create(null) : {};
+    }
+
+    var tempObj = typeof str === 'string' ? internals.parseValues(str, options) : str;
+    var obj = options.plainObjects ? Object.create(null) : {};
+
+    // Iterate over the keys and setup the new object
+
+    var keys = Object.keys(tempObj);
+    for (var i = 0; i < keys.length; ++i) {
+        var key = keys[i];
+        var newObj = internals.parseKeys(key, tempObj[key], options);
+        obj = Utils.merge(obj, newObj, options);
+    }
+
+    return Utils.compact(obj);
+};
+
+},{"./utils":19}],18:[function(require,module,exports){
+'use strict';
+
+var Utils = require('./utils');
+
+var internals = {
+    delimiter: '&',
+    arrayPrefixGenerators: {
+        brackets: function (prefix) {
+            return prefix + '[]';
+        },
+        indices: function (prefix, key) {
+            return prefix + '[' + key + ']';
+        },
+        repeat: function (prefix) {
+            return prefix;
+        }
+    },
+    strictNullHandling: false,
+    skipNulls: false,
+    encode: true
+};
+
+internals.stringify = function (object, prefix, generateArrayPrefix, strictNullHandling, skipNulls, encode, filter, sort, allowDots) {
+    var obj = object;
+    if (typeof filter === 'function') {
+        obj = filter(prefix, obj);
+    } else if (Utils.isBuffer(obj)) {
+        obj = String(obj);
+    } else if (obj instanceof Date) {
+        obj = obj.toISOString();
+    } else if (obj === null) {
+        if (strictNullHandling) {
+            return encode ? Utils.encode(prefix) : prefix;
+        }
+
+        obj = '';
+    }
+
+    if (typeof obj === 'string' || typeof obj === 'number' || typeof obj === 'boolean') {
+        if (encode) {
+            return [Utils.encode(prefix) + '=' + Utils.encode(obj)];
+        }
+        return [prefix + '=' + obj];
+    }
+
+    var values = [];
+
+    if (typeof obj === 'undefined') {
+        return values;
+    }
+
+    var objKeys;
+    if (Array.isArray(filter)) {
+        objKeys = filter;
+    } else {
+        var keys = Object.keys(obj);
+        objKeys = sort ? keys.sort(sort) : keys;
+    }
+
+    for (var i = 0; i < objKeys.length; ++i) {
+        var key = objKeys[i];
+
+        if (skipNulls && obj[key] === null) {
+            continue;
+        }
+
+        if (Array.isArray(obj)) {
+            values = values.concat(internals.stringify(obj[key], generateArrayPrefix(prefix, key), generateArrayPrefix, strictNullHandling, skipNulls, encode, filter, sort, allowDots));
+        } else {
+            values = values.concat(internals.stringify(obj[key], prefix + (allowDots ? '.' + key : '[' + key + ']'), generateArrayPrefix, strictNullHandling, skipNulls, encode, filter, sort, allowDots));
+        }
+    }
+
+    return values;
+};
+
+module.exports = function (object, opts) {
+    var obj = object;
+    var options = opts || {};
+    var delimiter = typeof options.delimiter === 'undefined' ? internals.delimiter : options.delimiter;
+    var strictNullHandling = typeof options.strictNullHandling === 'boolean' ? options.strictNullHandling : internals.strictNullHandling;
+    var skipNulls = typeof options.skipNulls === 'boolean' ? options.skipNulls : internals.skipNulls;
+    var encode = typeof options.encode === 'boolean' ? options.encode : internals.encode;
+    var sort = typeof options.sort === 'function' ? options.sort : null;
+    var allowDots = typeof options.allowDots === 'undefined' ? false : options.allowDots;
+    var objKeys;
+    var filter;
+    if (typeof options.filter === 'function') {
+        filter = options.filter;
+        obj = filter('', obj);
+    } else if (Array.isArray(options.filter)) {
+        objKeys = filter = options.filter;
+    }
+
+    var keys = [];
+
+    if (typeof obj !== 'object' || obj === null) {
+        return '';
+    }
+
+    var arrayFormat;
+    if (options.arrayFormat in internals.arrayPrefixGenerators) {
+        arrayFormat = options.arrayFormat;
+    } else if ('indices' in options) {
+        arrayFormat = options.indices ? 'indices' : 'repeat';
+    } else {
+        arrayFormat = 'indices';
+    }
+
+    var generateArrayPrefix = internals.arrayPrefixGenerators[arrayFormat];
+
+    if (!objKeys) {
+        objKeys = Object.keys(obj);
+    }
+
+    if (sort) {
+        objKeys.sort(sort);
+    }
+
+    for (var i = 0; i < objKeys.length; ++i) {
+        var key = objKeys[i];
+
+        if (skipNulls && obj[key] === null) {
+            continue;
+        }
+
+        keys = keys.concat(internals.stringify(obj[key], key, generateArrayPrefix, strictNullHandling, skipNulls, encode, filter, sort, allowDots));
+    }
+
+    return keys.join(delimiter);
+};
+
+},{"./utils":19}],19:[function(require,module,exports){
+'use strict';
+
+var hexTable = (function () {
+    var array = new Array(256);
+    for (var i = 0; i < 256; ++i) {
+        array[i] = '%' + ((i < 16 ? '0' : '') + i.toString(16)).toUpperCase();
+    }
+
+    return array;
+}());
+
+exports.arrayToObject = function (source, options) {
+    var obj = options.plainObjects ? Object.create(null) : {};
+    for (var i = 0; i < source.length; ++i) {
+        if (typeof source[i] !== 'undefined') {
+            obj[i] = source[i];
+        }
+    }
+
+    return obj;
+};
+
+exports.merge = function (target, source, options) {
+    if (!source) {
+        return target;
+    }
+
+    if (typeof source !== 'object') {
+        if (Array.isArray(target)) {
+            target.push(source);
+        } else if (typeof target === 'object') {
+            target[source] = true;
+        } else {
+            return [target, source];
+        }
+
+        return target;
+    }
+
+    if (typeof target !== 'object') {
+        return [target].concat(source);
+    }
+
+    var mergeTarget = target;
+    if (Array.isArray(target) && !Array.isArray(source)) {
+        mergeTarget = exports.arrayToObject(target, options);
+    }
+
+	return Object.keys(source).reduce(function (acc, key) {
+        var value = source[key];
+
+        if (Object.prototype.hasOwnProperty.call(acc, key)) {
+            acc[key] = exports.merge(acc[key], value, options);
+        } else {
+            acc[key] = value;
+        }
+		return acc;
+    }, mergeTarget);
+};
+
+exports.decode = function (str) {
+    try {
+        return decodeURIComponent(str.replace(/\+/g, ' '));
+    } catch (e) {
+        return str;
+    }
+};
+
+exports.encode = function (str) {
+    // This code was originally written by Brian White (mscdex) for the io.js core querystring library.
+    // It has been adapted here for stricter adherence to RFC 3986
+    if (str.length === 0) {
+        return str;
+    }
+
+    var string = typeof str === 'string' ? str : String(str);
+
+    var out = '';
+    for (var i = 0; i < string.length; ++i) {
+        var c = string.charCodeAt(i);
+
+        if (
+            c === 0x2D || // -
+            c === 0x2E || // .
+            c === 0x5F || // _
+            c === 0x7E || // ~
+            (c >= 0x30 && c <= 0x39) || // 0-9
+            (c >= 0x41 && c <= 0x5A) || // a-z
+            (c >= 0x61 && c <= 0x7A) // A-Z
+        ) {
+            out += string.charAt(i);
+            continue;
+        }
+
+        if (c < 0x80) {
+            out = out + hexTable[c];
+            continue;
+        }
+
+        if (c < 0x800) {
+            out = out + (hexTable[0xC0 | (c >> 6)] + hexTable[0x80 | (c & 0x3F)]);
+            continue;
+        }
+
+        if (c < 0xD800 || c >= 0xE000) {
+            out = out + (hexTable[0xE0 | (c >> 12)] + hexTable[0x80 | ((c >> 6) & 0x3F)] + hexTable[0x80 | (c & 0x3F)]);
+            continue;
+        }
+
+        i += 1;
+        c = 0x10000 + (((c & 0x3FF) << 10) | (string.charCodeAt(i) & 0x3FF));
+        out += (hexTable[0xF0 | (c >> 18)] + hexTable[0x80 | ((c >> 12) & 0x3F)] + hexTable[0x80 | ((c >> 6) & 0x3F)] + hexTable[0x80 | (c & 0x3F)]);
+    }
+
+    return out;
+};
+
+exports.compact = function (obj, references) {
+    if (typeof obj !== 'object' || obj === null) {
+        return obj;
+    }
+
+    var refs = references || [];
+    var lookup = refs.indexOf(obj);
+    if (lookup !== -1) {
+        return refs[lookup];
+    }
+
+    refs.push(obj);
+
+    if (Array.isArray(obj)) {
+        var compacted = [];
+
+        for (var i = 0; i < obj.length; ++i) {
+            if (typeof obj[i] !== 'undefined') {
+                compacted.push(obj[i]);
+            }
+        }
+
+        return compacted;
+    }
+
+    var keys = Object.keys(obj);
+    for (var j = 0; j < keys.length; ++j) {
+        var key = keys[j];
+        obj[key] = exports.compact(obj[key], refs);
+    }
+
+    return obj;
+};
+
+exports.isRegExp = function (obj) {
+    return Object.prototype.toString.call(obj) === '[object RegExp]';
+};
+
+exports.isBuffer = function (obj) {
+    if (obj === null || typeof obj === 'undefined') {
+        return false;
+    }
+
+    return !!(obj.constructor && obj.constructor.isBuffer && obj.constructor.isBuffer(obj));
 };
 
 },{}]},{},[1]);
