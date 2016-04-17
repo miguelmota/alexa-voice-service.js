@@ -7,7 +7,7 @@
 
   const AMAZON_ERROR_CODES = require('./lib/AmazonErrorCodes');
   const Observable = require('./lib/Observable');
-  const Player = require('./lib/player');
+  const Player = require('./lib/Player');
   const arrayBufferToString = require('./lib/utils/arrayBufferToString');
   const writeUTFBytes = require('./lib/utils/writeUTFBytes');
   const mergeBuffers = require('./lib/utils/mergeBuffers');
