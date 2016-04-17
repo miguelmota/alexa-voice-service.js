@@ -30,7 +30,7 @@ avs.on(AVS.EventTypes.LOGOUT, () => {
   loginBtn.disabled = false;
   logoutBtn.disabled = true;
   startRecording.disabled = true;
-  stopRe.disabled = true;
+  stopRecording.disabled = true;
 });
 
 avs.on(AVS.EventTypes.TOKEN_INVALID, () => {

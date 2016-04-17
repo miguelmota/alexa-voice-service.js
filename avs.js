@@ -7,7 +7,7 @@
 
   const AMAZON_ERROR_CODES = require('./lib/AmazonErrorCodes');
   const Observable = require('./lib/Observable');
-  const Player = require('./lib/player');
+  const Player = require('./lib/Player');
   const arrayBufferToString = require('./lib/utils/arrayBufferToString');
   const writeUTFBytes = require('./lib/utils/writeUTFBytes');
   const mergeBuffers = require('./lib/utils/mergeBuffers');
@@ -265,15 +265,9 @@
 
     getTokenFromUrl() {
       return new Promise((resolve, reject) => {
-        let queryString = window.location.href.split('?#');
+        let hash = window.location.hash.substr(1);
 
-        if (queryString.length === 2) {
-          queryString = queryString[1];
-        } else {
-          queryString = window.location.search.substr(1);
-        }
-
-        const query = qs.parse(queryString);
+        const query = qs.parse(hash);
         const token = query.access_token;
         const refreshToken = query.refresh_token;
         const tokenType = query.token_type;
@@ -291,7 +285,7 @@
           return resolve(token);
         }
 
-        return reject(null);
+        return reject();
       });
     }
 
