@@ -1,3 +1,6 @@
-output {
+#log {
   display: block;
+  max-height: 500px;
+  overflow: auto;
+  border: 1px solid #F7F7F7;
 }

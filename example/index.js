@@ -46,30 +46,37 @@ avs.player.on(AVS.Player.EventTypes.ERROR, logError);
 
 avs.player.on(AVS.Player.EventTypes.PLAY, () => {
   playAudio.disabled = true;
+  replayAudio.disabled = true;
   pauseAudio.disabled = false;
   stopAudio.disabled = false;
 });
 
 avs.player.on(AVS.Player.EventTypes.ENDED, () => {
   playAudio.disabled = true;
+  replayAudio.disabled = false;
   pauseAudio.disabled = true;
   stopAudio.disabled = true;
 });
 
 avs.player.on(AVS.Player.EventTypes.STOP, () => {
-  playAudio.disabled = false;
+  playAudio.disabled = true;
+  replayAudio.disabled = false;
   pauseAudio.disabled = false;
   stopAudio.disabled = false;
 });
 
 avs.player.on(AVS.Player.EventTypes.PAUSE, () => {
-  playAudio.disabled = true;
-  pauseAudio.disabled = false;
-  stopAudio.disabled = false;
+  playAudio.disabled = false;
+  replayAudio.disabled = false;
+  pauseAudio.disabled = true;
+  stopAudio.disabled = true;
 });
 
 avs.player.on(AVS.Player.EventTypes.REPLAY, () => {
-
+  playAudio.disabled = true;
+  replayAudio.disabled = true;
+  pauseAudio.disabled = false;
+  stopAudio.disabled = false;
 });
 
 function log(message) {
@@ -184,7 +191,11 @@ pauseAudio.addEventListener('click', (event) => {
 });
 
 playAudio.addEventListener('click', (event) => {
-  avs.plaer.play();
+  avs.player.play();
+});
+
+replayAudio.addEventListener('click', (event) => {
+  avs.player.replay();
 });
 
 function sendBlob(blob) {

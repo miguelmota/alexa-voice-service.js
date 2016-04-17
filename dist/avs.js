@@ -803,6 +803,7 @@ class Player {
   constructor() {
     this._queue = [];
     this._currentSource = null;
+    this._currentBuffer = null;
     this._context = new AudioContext();
 
     Observable(this);
@@ -844,29 +845,29 @@ class Player {
         this._queue.push(audioBuffer);
         this._log('Enqueue audio');
         this.emit(Player.EventTypes.ENQUEUE);
-        return resolve();
+        return resolve(audioBuffer);
       };
 
       if (stringType === '[object DataView]' || stringType === '[object Uint8Array]') {
-        arrayBufferToAudioBuffer(item.buffer)
+        arrayBufferToAudioBuffer(item.buffer, this._context)
         .then(proceed);
       } else if (stringType === '[object AudioBuffer]') {
         proceed(item);
       } else {
         const error = new Error('Invalid type.');
-        this._log(error);
+        this.emit('error', error);
         return reject(error);
       }
     });
   }
 
-  dequeue() {
+  deque() {
     return new Promise((resolve, reject) => {
       const item = this._queue.shift();
 
       if (item) {
-        this._log('Dequeue audio');
-        this.emit(Player.EventTypes.DEQUEUE);
+        this._log('Deque audio');
+        this.emit(Player.EventTypes.DEQUE);
         return resolve(item);
       }
 
@@ -876,18 +877,27 @@ class Player {
 
   play() {
     return new Promise((resolve, reject) => {
-      return this.dequeue()
-      .then(audioBuffer => {
+      if (this._context.state === 'suspended') {
+        this._context.resume();
+
         this._log('Play audio');
         this.emit(Player.EventTypes.PLAY);
-        this.playAudioBuffer(audioBuffer)
-      });
+      } else {
+        return this.deque()
+        .then(audioBuffer => {
+          this.playAudioBuffer(audioBuffer)
+
+          this._log('Play audio');
+          this.emit(Player.EventTypes.PLAY);
+        });
+      }
     });
   }
 
   stop() {
     return new Promise((resolve, reject) => {
         if (this._currentSource) {
+          this._currentSource.onended = function() {};
           this._currentSource.stop();
         }
 
@@ -898,8 +908,8 @@ class Player {
 
   pause() {
     return new Promise((resolve, reject) => {
-        if (this._currentSource) {
-          this._currentSource.pause();
+        if (this._context.state === 'running') {
+          this._context.suspend();
         }
 
         this._log('Pause audio');
@@ -909,8 +919,23 @@ class Player {
 
   replay() {
     return new Promise((resolve, reject) => {
-        this._log('Replay audio');
-        this.emit(Player.EventTypes.REPLAY);
+        if (this._currentBuffer) {
+          this._log('Replay audio');
+          this.emit(Player.EventTypes.REPLAY);
+
+          if (this._context.state === 'suspended') {
+            this._context.resume();
+          }
+
+          this._currentSource.stop();
+          this._currentSource.onended = function() {};
+
+          return this.playAudioBuffer(this._currentBuffer);
+        } else {
+          const error = new Error('No audio source loaded.');
+          this.emit('error', error)
+          reject();
+        }
     });
   }
 
@@ -923,7 +948,6 @@ class Player {
       const objectUrl = URL.createObjectURL(blob);
       const audio = new Audio();
       audio.src = objectUrl;
-      this._currentSource = audio;
 
       audio.addEventListener('ended', () => {
         this._log('Audio ended');
@@ -947,13 +971,18 @@ class Player {
       source.buffer = buffer;
       source.connect(this._context.destination);
       source.start(0);
+      this._currentBuffer = buffer;
+      this._currentSource = source;
 
       source.onended = (event) => {
         this._log('Audio ended');
         this.emit(Player.EventTypes.ENDED);
       };
 
-      this._currentSource = source;
+      source.onerror = (error) => {
+        this.emit('error', error);
+      };
+
       resolve();
     });
   }
@@ -967,7 +996,7 @@ class Player {
       PAUSE: 'pause',
       STOP: 'pause',
       ENQUEUE: 'enqueue',
-      DEQUEUE: 'dequeue'
+      DEQUE: 'deque'
     };
   }
 }

@@ -113,7 +113,7 @@ example: avs.on(AVS.EventTypes.LOG, callback)
 
 # Player
 
-avs.player.enqueu(dataView|typedArray|arrayBuffer) -> promise() - add an audio source to play queue
+avs.player.enqueu(dataView|typedArray|arrayBuffer) -> promise(arraybuffer) - add an audio source to play queue. Converts input to AudioBuffer.
 avs.player.deque() -> promise() - dequeu an audio source to play
 avs.player.play() -> promise() - play next source in queue
 avs.player.stop() -> promise() - stop playing
