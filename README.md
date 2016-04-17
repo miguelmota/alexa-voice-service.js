@@ -90,10 +90,8 @@ avs.getTokenFromRefreshToken(refreshToken) -> promise(token)
 avs.refreshToken() -> promise({token, refreshToken})
 avs.getToken() -> promise(token)
 avs.getRefreshToken() -> promise(refreshToken)
-
 avs.requestMic() -> promise(stream);
 avs.connectMediaStream(stream) -> promise;
-
 avs.stopRecording() -> promise;
 avs.startRecording() -> promise;
 avs.sendAudio(dataView) -> promise(response);
@@ -113,8 +111,7 @@ identifiers (found under AVS.EventTypes object)
 
 example: avs.on(AVS.EventTypes.LOG, callback)
 
-## Player
-
+# Player
 
 avs.player.enqueu(dataView|typedArray|arrayBuffer) -> promise() - add an audio source to play queue
 avs.player.dequeue(dataView|typedArray|arrayBuffer) -> promise() - dequeu an audio source to play
