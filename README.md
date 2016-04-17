@@ -96,7 +96,6 @@ avs.connectMediaStream(stream) -> promise;
 
 avs.stopRecording() -> promise;
 avs.startRecording() -> promise;
-avs.playBlob(blob) -> promise;
 avs.sendAudio(dataView) -> promise(response);
 
 avs.on(identifier, callback)
@@ -110,9 +109,34 @@ identifiers (found under AVS.EventTypes object)
   RECORD_STOP - when recording is stopped.
   TOKEN_SET - when token is set.
   REFRESH_TOKEN_SET - when refresh token is set.
-  TOKEN_INVALID - when token is invalid, usually because it's expired.
+  TOKEN_INVALID - when token is invalid, usually because it is expired.
 
 example: avs.on(AVS.EventTypes.LOG, callback)
+
+## Player
+
+
+avs.player.enqueu(dataView|typedArray|arrayBuffer) -> promise() - add an audio source to play queue
+avs.player.dequeue(dataView|typedArray|arrayBuffer) -> promise() - dequeu an audio source to play
+avs.player.play() -> promise() - play next source in queue
+avs.player.stop() -> promise() - stop playing
+avs.player.replay() -> promise() - replay last audio source played
+avs.player.pause() -> promise() - pause playing
+avs.player.emptyQueue() -> promise() - empty the queue
+avs.player.playBlob(blob) -> promise() - play a blob source
+avs.player.playAudioBuffer(audioBuffer) -> promise() - play an AudioBuffer source
+
+avs.player.on(identifier, callback)
+
+identifiers (found under AVS.Player.EventTypes object)
+  LOG - when a debug log occurs
+  ERROR - when an error occurs
+  PLAY - when audio source is played
+  REPLAY - when audio source is replayed
+  PAUSE - when audio source is paused
+  STOP - when audio source is stopped playing
+  ENQUEUE - when an audio source is added to queue
+  DEQUEUE - when an audio source is removed from queue
 ```
 
 # TODO

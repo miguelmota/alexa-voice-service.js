@@ -5,18 +5,23 @@
   const qs = require('qs');
   const httpMessageParser = require('http-message-parser');
 
+  const AMAZON_ERROR_CODES = require('./lib/AmazonErrorCodes');
+  const Observable = require('./lib/Observable');
+  const Player = require('./lib/player');
+  const arrayBufferToString = require('./lib/utils/arrayBufferToString');
+  const writeUTFBytes = require('./lib/utils/writeUTFBytes');
+  const mergeBuffers = require('./lib/utils/mergeBuffers');
+  const interleave = require('./lib/utils/interleave');
+  const downsampleBuffer = require('./lib/utils/downsampleBuffer');
+
   if (!navigator.getUserMedia) {
     navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia ||
       navigator.mozGetUserMedia || navigator.msGetUserMedia;
   }
 
-  const AMAZON_ERROR_CODES = {
-    InvalidAccessTokenException: 'com.amazon.alexahttpproxy.exceptions.InvalidAccessTokenException'
-  };
-
   class AVS {
     constructor(options = {}) {
-      observable(this);
+      Observable(this);
 
       this._bufferSize = 2048;
       this._inputChannels = 1;
@@ -70,6 +75,8 @@
       if (options.debug) {
         this.setDebug(options.debug);
       }
+
+      this.player = new Player();
     }
 
     _log(type, message) {
@@ -526,17 +533,17 @@
 
         this._isRecording = false;
 
-        const leftBuffer = Helpers.mergeBuffers(this._leftChannel, this._recordingLength);
+        const leftBuffer = mergeBuffers(this._leftChannel, this._recordingLength);
         let interleaved = null;
 
         if (this._outputChannels > 1) {
-          const rightBuffer = Helpers.mergeBuffers(this._rightChannel, this._recordingLength);
-          interleaved = Helpers.interleave(leftBuffer, rightBuffer);
+          const rightBuffer = mergeBuffers(this._rightChannel, this._recordingLength);
+          interleaved = interleave(leftBuffer, rightBuffer);
         } else {
-          interleaved = Helpers.interleave(leftBuffer);
+          interleaved = interleave(leftBuffer);
         }
 
-        interleaved = Helpers.downsampleBuffer(interleaved, this._sampleRate, this._outputSampleRate);
+        interleaved = downsampleBuffer(interleaved, this._sampleRate, this._outputSampleRate);
 
         const buffer = new ArrayBuffer(44 + interleaved.length * 2);
         const view = new DataView(buffer);
@@ -544,10 +551,10 @@
       /**
        * @credit https://github.com/mattdiamond/Recorderjs
        */
-        Helpers.writeUTFBytes(view, 0, 'RIFF');
+        writeUTFBytes(view, 0, 'RIFF');
         view.setUint32(4, 44 + interleaved.length * 2, true);
-        Helpers.writeUTFBytes(view, 8, 'WAVE');
-        Helpers.writeUTFBytes(view, 12, 'fmt ');
+        writeUTFBytes(view, 8, 'WAVE');
+        writeUTFBytes(view, 12, 'fmt ');
         view.setUint32(16, 16, true);
         view.setUint16(20, 1, true);
         view.setUint16(22, this._outputChannels, true);
@@ -555,7 +562,7 @@
         view.setUint32(28, this._outputSampleRate * 4, true);
         view.setUint16(32, 4, true);
         view.setUint16(34, 16, true);
-        Helpers.writeUTFBytes(view, 36, 'data');
+        writeUTFBytes(view, 36, 'data');
         view.setUint32(40, interleaved.length * 2, true);
 
         const length = interleaved.length;
@@ -570,31 +577,6 @@
         this._log(`Recording stopped.`);
         this.emit(AVS.EventTypes.RECORD_STOP);
         return resolve(view);
-      });
-    }
-
-    playBlob(blob) {
-      return new Promise((resolve, reject) => {
-        if (!blob) {
-          reject();
-        }
-
-        const objectUrl = URL.createObjectURL(blob);
-        const audio = new Audio();
-        audio.src = objectUrl;
-
-        audio.addEventListener('ended', () => {
-          this._log('Audio play ended.');
-        });
-
-        audio.onload = (event) => {
-          URL.revokeObjectUrl(objectUrl);
-        };
-
-        this._log('Audio play started.');
-        audio.play();
-
-        resolve();
       });
     }
 
@@ -621,7 +603,7 @@
               error = new Error('Empty response.');
             } else {
               try {
-                response = JSON.parse(Helpers.arrayBufferToString(buffer));
+                response = JSON.parse(arrayBufferToString(buffer));
               } catch(err) {
                 error = err;
               }
@@ -707,166 +689,10 @@
         TOKEN_INVALID: 'tokenInvalid'
       };
     }
-  }
 
-  class Helpers {
-    /**
-     * @credit http://stackoverflow.com/a/26245260
-     */
-    static downsampleBuffer(buffer, inputSampleRate, outputSampleRate) {
-      if (inputSampleRate === outputSampleRate) {
-        return buffer;
-      }
-
-      if (inputSampleRate < outputSampleRate) {
-        throw new Error('Output sample rate must be less than input sample rate.');
-      }
-
-      const sampleRateRatio = inputSampleRate / outputSampleRate;
-      const newLength = Math.round(buffer.length / sampleRateRatio);
-      let result = new Float32Array(newLength);
-      let offsetResult = 0;
-      let offsetBuffer = 0;
-
-      while (offsetResult < result.length) {
-        let nextOffsetBuffer = Math.round((offsetResult + 1) * sampleRateRatio);
-        let accum = 0;
-        let count = 0;
-
-        for (var i = offsetBuffer; i < nextOffsetBuffer && i < buffer.length; i++) {
-          accum += buffer[i];
-          count++;
-        }
-
-        result[offsetResult] = accum / count;
-        offsetResult++;
-        offsetBuffer = nextOffsetBuffer;
-      }
-
-      return result;
+    static get Player() {
+      return Player;
     }
-
-    /**
-     * @credit https://github.com/mattdiamond/Recorderjs
-     */
-    static interleave(leftChannel, rightChannel){
-      if (leftChannel && !rightChannel) {
-        return leftChannel;
-      }
-
-      const length = leftChannel.length + rightChannel.length;
-      let result = new Float32Array(length);
-      let inputIndex = 0;
-
-      for (let index = 0; index < length; ){
-        result[index++] = leftChannel[inputIndex];
-        result[index++] = rightChannel[inputIndex];
-        inputIndex++;
-      }
-
-      return result;
-    }
-
-    /**
-     * @credit https://github.com/mattdiamond/Recorderjs
-     */
-    static mergeBuffers(channelBuffer, recordingLength){
-      const result = new Float32Array(recordingLength);
-      const length = channelBuffer.length;
-      let offset = 0;
-
-      for (let i = 0; i < length; i++){
-        let buffer = channelBuffer[i];
-
-        result.set(buffer, offset);
-        offset += buffer.length;
-      }
-
-      return result;
-    }
-
-    /**
-     * @credit https://github.com/mattdiamond/Recorderjs
-     */
-    static writeUTFBytes(view, offset, string){
-      const length = string.length;
-
-      for (let i = 0; i < length; i++){
-        view.setUint8(offset + i, string.charCodeAt(i));
-      }
-    }
-
-    /**
-     * @credit https://developers.google.com/web/updates/2012/06/How-to-convert-ArrayBuffer-to-and-from-String?hl=en
-     */
-    static arrayBufferToString(buffer) {
-      return String.fromCharCode.apply(null, new Uint16Array(buffer));
-    }
-  }
-
-  function observable(el) {
-    let callbacks = {};
-
-    el.on = function(name, fn) {
-      if (typeof fn !== 'function') {
-        throw new TypeError('Second argument for "on" method must be a function.');
-      }
-
-      (callbacks[name] = callbacks[name] || []).push(fn);
-
-      return el;
-    };
-
-    el.one = function(name, fn) {
-      fn.one = true;
-      return el.on.call(el, name, fn);
-    };
-
-    el.off = function(name, fn) {
-      if (name === '*') {
-        callbacks = {};
-        return callbacks
-      }
-
-      if (!callbacks[name]) {
-        return false;
-      }
-
-      if (fn) {
-        if (typeof fn !== 'function') {
-          throw new TypeError('Second argument for "off" method must be a function.');
-        }
-
-        callbacks[name] = callbacks[name].map(function(fm, i) {
-          if (fm === fn) {
-            callbacks[name].splice(i, 1);
-          }
-        });
-      } else {
-        delete callbacks[name];
-      }
-    };
-
-    el.emit = function(name /*, args */) {
-      if (!callbacks[name] || !callbacks[name].length) {
-        return;
-      }
-
-      const args = [].slice.call(arguments, 1);
-
-      callbacks[name].forEach(function(fn, i) {
-        if (fn) {
-          fn.apply(fn, args);
-          if (fn.one) {
-            callbacks[name].splice(i, 1);
-          }
-        }
-      });
-
-      return el;
-    };
-
-    return el;
   }
 
   if (typeof exports !== 'undefined') {

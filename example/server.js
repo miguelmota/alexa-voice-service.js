@@ -21,9 +21,6 @@ const upload = multer({ dest: 'uploads/' });
 const app = express();
 const port = 9745;
 
-//const AVS = require('../node-avs');
-//const avs = new AVS();
-
 const server = https.createServer(options, app).listen(port, () => {
   console.log(`Express server listening on port ${port}`);
 });

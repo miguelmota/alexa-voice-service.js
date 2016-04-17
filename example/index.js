@@ -12,25 +12,25 @@ const avs = new AVS({
 avs.on(AVS.EventTypes.TOKEN_SET, () => {
   loginBtn.disabled = true;
   logoutBtn.disabled = false;
-  start.disabled = false;
-  stop.disabled = true;
+  startRecording.disabled = false;
+  stopRecording.disabled = true;
 });
 
 avs.on(AVS.EventTypes.RECORD_START, () => {
-  start.disabled = true;
-  stop.disabled = false;
+  startRecording.disabled = true;
+  stopRecording.disabled = false;
 });
 
 avs.on(AVS.EventTypes.RECORD_STOP, () => {
-  start.disabled = false;
-  stop.disabled = true;
+  startRecording.disabled = false;
+  stopRecording.disabled = true;
 });
 
 avs.on(AVS.EventTypes.LOGOUT, () => {
   loginBtn.disabled = false;
   logoutBtn.disabled = true;
-  start.disabled = true;
-  stop.disabled = true;
+  startRecording.disabled = true;
+  stopRe.disabled = true;
 });
 
 avs.on(AVS.EventTypes.TOKEN_INVALID, () => {
@@ -38,19 +38,57 @@ avs.on(AVS.EventTypes.TOKEN_INVALID, () => {
   .then(login)
 });
 
-avs.on(AVS.EventTypes.LOG, (message) => {
-  logOutput.innerHTML += `<li>LOG: ${message}</li>`;
+avs.on(AVS.EventTypes.LOG, log);
+avs.on(AVS.EventTypes.ERROR, logError);
+
+avs.player.on(AVS.Player.EventTypes.LOG, log);
+avs.player.on(AVS.Player.EventTypes.ERROR, logError);
+
+avs.player.on(AVS.Player.EventTypes.PLAY, () => {
+  playAudio.disabled = true;
+  pauseAudio.disabled = false;
+  stopAudio.disabled = false;
 });
 
-avs.on(AVS.EventTypes.ERROR, (error) => {
-  logOutput.innerHTML += `<li>ERROR: ${error}</li>`;
+avs.player.on(AVS.Player.EventTypes.ENDED, () => {
+  playAudio.disabled = true;
+  pauseAudio.disabled = true;
+  stopAudio.disabled = true;
 });
+
+avs.player.on(AVS.Player.EventTypes.STOP, () => {
+  playAudio.disabled = false;
+  pauseAudio.disabled = false;
+  stopAudio.disabled = false;
+});
+
+avs.player.on(AVS.Player.EventTypes.PAUSE, () => {
+  playAudio.disabled = true;
+  pauseAudio.disabled = false;
+  stopAudio.disabled = false;
+});
+
+avs.player.on(AVS.Player.EventTypes.REPLAY, () => {
+
+});
+
+function log(message) {
+  logOutput.innerHTML += `<li>LOG: ${message}</li>`;
+}
+
+function logError(error) {
+  logOutput.innerHTML += `<li>ERROR: ${error}</li>`;
+}
 
 const loginBtn = document.getElementById('login');
 const logoutBtn = document.getElementById('logout');
 const logOutput = document.getElementById('log');
-const start = document.getElementById('start');
-const stop = document.getElementById('stop');
+const startRecording = document.getElementById('startRecording');
+const stopRecording = document.getElementById('stopRecording');
+const stopAudio = document.getElementById('stopAudio');
+const pauseAudio = document.getElementById('pauseAudio');
+const playAudio = document.getElementById('playAudio');
+const replayAudio = document.getElementById('replayAudio');
 
 /*
 // If using client secret
@@ -103,37 +141,31 @@ function logout() {
   });
 }
 
-start.addEventListener('click', () => {
+startRecording.addEventListener('click', () => {
   avs.startRecording();
 });
 
-stop.addEventListener('click', () => {
+stopRecording.addEventListener('click', () => {
   avs.stopRecording().then(dataView => {
-    const blob = new Blob ([dataView], {
-      type: 'audio/wav'
+    avs.player.emptyQueue()
+    .then(() => avs.player.enqueue(dataView))
+    .then(() => avs.player.play())
+    .catch(error => {
+      console.error(error);
     });
 
-    avs.playBlob(blob);
     //sendBlob(blob);
     avs.sendAudio(dataView)
     .then(response => {
 
-      window.AudioContext = window.AudioContext || window.webkitAudioContext;
-      const context = new AudioContext();
+      if (response.multipart.length > 1) {
+        const typedArray = response.multipart[1].body;
 
-      const int8 = response.multipart[1].body;
-      const dst = new ArrayBuffer(int8.byteLength);
-      new Uint8Array(dst).set(new Uint8Array(int8));
-
-      context.decodeAudioData(dst, function(buffer) {
-        playSound(buffer);
-      }, () => {});
-
-      function playSound(buffer) {
-        const source = context.createBufferSource();
-        source.buffer = buffer;
-        source.connect(context.destination);
-        source.start(0);
+        avs.player.enqueue(typedArray)
+        .then(() => avs.player.play())
+        .catch(error => {
+          console.error(error);
+        });
       }
 
     })
@@ -141,6 +173,18 @@ stop.addEventListener('click', () => {
       console.error(error);
     });
   });
+});
+
+stopAudio.addEventListener('click', (event) => {
+  avs.player.stop();
+});
+
+pauseAudio.addEventListener('click', (event) => {
+  avs.player.pause();
+});
+
+playAudio.addEventListener('click', (event) => {
+  avs.plaer.play();
 });
 
 function sendBlob(blob) {
