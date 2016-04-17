@@ -795,6 +795,8 @@ const toString = Object.prototype.toString;
 
 class Player {
   constructor() {
+    window.AudioContext = window.AudioContext || window.webkitAudioContext;
+
     this._queue = [];
     this._currentSource = null;
     this._currentBuffer = null;
@@ -1000,9 +1002,9 @@ module.exports = Player;
 },{"./Observable":3,"./utils/arrayBufferToAudioBuffer":5}],5:[function(require,module,exports){
 'use strict';
 
-window.AudioContext = window.AudioContext || window.webkitAudioContext;
-
 function arrayBufferToAudioBuffer(arrayBuffer, context) {
+  window.AudioContext = window.AudioContext || window.webkitAudioContext;
+
   return new Promise((resolve, reject) => {
     if (context) {
       if (Object.prototype.toString.call(context) !== '[object AudioContext]') {
