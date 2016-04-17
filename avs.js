@@ -265,7 +265,7 @@
 
     getTokenFromUrl() {
       return new Promise((resolve, reject) => {
-        let hash = window.location.hash.replace('#', '');
+        let hash = window.location.hash.substr(1);
 
         const query = qs.parse(hash);
         const token = query.access_token;
@@ -285,7 +285,7 @@
           return resolve(token);
         }
 
-        return reject(null);
+        return reject();
       });
     }
 
