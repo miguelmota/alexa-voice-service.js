@@ -19,7 +19,7 @@ The audio recorded in this library is *mono channel, sampled at 16k Hz, and sign
 
 # Demo
 
-**[http://lab.moogs.io/alexa-voice-service](http://lab.moogs.io/alexa-voice-service)**
+**[https://lab.miguelmota.com/alexa-voice-service](https://lab.miguelmota.com/alexa-voice-service)**
 
 # Install
 
