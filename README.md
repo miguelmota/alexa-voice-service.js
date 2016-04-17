@@ -94,7 +94,8 @@ avs.requestMic() -> promise(stream);
 avs.connectMediaStream(stream) -> promise;
 avs.stopRecording() -> promise;
 avs.startRecording() -> promise;
-avs.sendAudio(dataView) -> promise(response);
+avs.sendAudio(dataView) -> promise(response); - send audio to AVS and get back an object containing response.
+The response object is the parsed http message.
 
 avs.on(identifier, callback)
 
