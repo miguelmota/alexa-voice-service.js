@@ -114,7 +114,7 @@ example: avs.on(AVS.EventTypes.LOG, callback)
 # Player
 
 avs.player.enqueu(dataView|typedArray|arrayBuffer) -> promise() - add an audio source to play queue
-avs.player.dequeue(dataView|typedArray|arrayBuffer) -> promise() - dequeu an audio source to play
+avs.player.deque() -> promise() - dequeu an audio source to play
 avs.player.play() -> promise() - play next source in queue
 avs.player.stop() -> promise() - stop playing
 avs.player.replay() -> promise() - replay last audio source played
@@ -133,7 +133,7 @@ identifiers (found under AVS.Player.EventTypes object)
   PAUSE - when audio source is paused
   STOP - when audio source is stopped playing
   ENQUEUE - when an audio source is added to queue
-  DEQUEUE - when an audio source is removed from queue
+  DEQUE - when an audio source is removed from queue
 ```
 
 # TODO
