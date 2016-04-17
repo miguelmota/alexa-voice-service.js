@@ -1,4 +1,4 @@
-const AVS = require('../avs');
+const AVS = require('../');
 const player = AVS.Player;
 
 const avs = new AVS({
