@@ -6,8 +6,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node server.js",
-    "watch": "watchify index.js -o index.bundle.js -v -d -t [ babelify ]",
-    "build-server": "browserify server.js -o server.bundle.js"
+    "watch": "./node_modules/watchify/bin/cmd.js ./index.js -o ./index.bundle.js -v -d -t [ babelify ]"
   },
   "author": "Miguel Mota <hello@miguelmota.com> (http://www.miguelmota.com/)",
   "license": "MIT",
@@ -19,6 +18,7 @@
     "multer": "^1.1.0"
   },
   "devDependencies": {
-    "babelify": "^7.2.0"
+    "babelify": "^7.2.0",
+    "watchify": "^3.7.0"
   }
 }
