@@ -139,11 +139,7 @@ identifiers (found under AVS.Player.EventTypes object)
 
 # TODO
 
-- [ ] Support for different Tx/Rx types (ArrayBuffer, Base64, FormData, etc.)
-- [ ] Handle all AVS responses (such as timeouts, playlists, etc.)
-- [ ] Support for WebSocket Tx/Rx
 - [ ] Better documentation
-- [ ] Make it work in Node environment (ie. being able to read audio files)
 
 # License
 

@@ -186,8 +186,6 @@ class AVS {
       xhr.open('POST', url, true);
       xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded;charset=UTF-8');
       xhr.onload = (event) => {
-        console.log('RESPONSE', xhr.response);
-
         let response = xhr.response;
 
         try {
@@ -607,13 +605,11 @@ class AVS {
       xhr.open('POST', url, true);
       xhr.responseType = 'arraybuffer';
       xhr.onload = (event) => {
-        console.log('RESPONSE', xhr.response);
-
         const buffer = new Buffer(xhr.response);
 
         if (xhr.status === 200) {
           const parsedMessage = httpMessageParser(buffer);
-          resolve(parsedMessage);
+          resolve({xhr, response: parsedMessage});
         } else {
           let error = new Error('An error occured with request.');
           let response = {};
@@ -852,10 +848,13 @@ class Player {
       };
 
       if (stringType === '[object DataView]' || stringType === '[object Uint8Array]') {
-        arrayBufferToAudioBuffer(item.buffer, this._context)
+        return arrayBufferToAudioBuffer(item.buffer, this._context)
         .then(proceed);
       } else if (stringType === '[object AudioBuffer]') {
-        proceed(item);
+        return proceed(item);
+      } else if (stringType === '[object ArrayBuffer]') {
+        return arrayBufferToAudioBuffer(item, this._context)
+        .then(proceed);
       } else {
         const error = new Error('Invalid type.');
         this.emit('error', error);
@@ -885,14 +884,22 @@ class Player {
 
         this._log('Play audio');
         this.emit(Player.EventTypes.PLAY);
+        resolve();
       } else {
         return this.deque()
         .then(audioBuffer => {
-          this.playAudioBuffer(audioBuffer)
-
           this._log('Play audio');
           this.emit(Player.EventTypes.PLAY);
-        });
+          return this.playAudioBuffer(audioBuffer);
+        }).then(resolve);
+      }
+    });
+  }
+
+  playQueue() {
+    return this.play().then(() => {
+      if (this._queue.length) {
+        return this.playQueue();
       }
     });
   }
@@ -980,13 +987,13 @@ class Player {
       source.onended = (event) => {
         this._log('Audio ended');
         this.emit(Player.EventTypes.ENDED);
+        resolve();
       };
 
       source.onerror = (error) => {
         this.emit('error', error);
+        reject(error);
       };
-
-      resolve();
     });
   }
 
@@ -1021,7 +1028,9 @@ function arrayBufferToAudioBuffer(arrayBuffer, context) {
       context = new AudioContext();
     }
 
-    context.decodeAudioData(arrayBuffer, resolve, reject);
+    context.decodeAudioData(arrayBuffer, (data) => {
+      resolve(data);
+    }, reject);
   });
 }
 
@@ -2856,7 +2865,15 @@ function blitBuffer (src, dst, offset, length) {
         result.multipart = parts.filter(httpMessageParser._isTruthy).map(function(part, i) {
           const result = {
             headers: null,
-            body: null
+            body: null,
+            meta: {
+              body: {
+                byteOffset: {
+                  start: null,
+                  end: null
+                }
+              }
+            }
           };
 
           const newlineRegex = /\n\n|\r\n\r\n/gim;
@@ -2875,6 +2892,9 @@ function blitBuffer (src, dst, offset, length) {
           }
 
           const possibleHeadersString = part.substr(0, newlineIndex);
+
+          let startOffset = null;
+          let endOffset = null;
 
           if (newlineIndex > -1) {
             const headers = httpMessageParser._parseHeaders(possibleHeadersString);
@@ -2898,7 +2918,9 @@ function blitBuffer (src, dst, offset, length) {
                 boundaryNewlineIndexes.push(headerNewlineIndex);
               });
 
-              body = message.slice(boundaryNewlineIndexes[i], boundaryIndexes[i + 1]);
+              startOffset = boundaryNewlineIndexes[i];
+              endOffset = boundaryIndexes[i + 1];
+              body = message.slice(startOffset, endOffset);
             } else {
               body = part;
             }
@@ -2907,6 +2929,8 @@ function blitBuffer (src, dst, offset, length) {
           }
 
           result.body = httpMessageParser._isFakeBuffer(body) ? body.toString() : body;
+          result.meta.body.byteOffset.start = startOffset;
+          result.meta.body.byteOffset.end = endOffset;
 
           return result;
         });

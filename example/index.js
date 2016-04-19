@@ -8,6 +8,7 @@ const avs = new AVS({
   deviceSerialNumber: 123,
   redirectUri: `https://${window.location.host}/authresponse`
 });
+window.avs = avs;
 
 avs.on(AVS.EventTypes.TOKEN_SET, () => {
   loginBtn.disabled = true;
@@ -161,17 +162,41 @@ stopRecording.addEventListener('click', () => {
       console.error(error);
     });
 
+        var ab = false;
     //sendBlob(blob);
     avs.sendAudio(dataView)
-    .then(response => {
+    .then(({xhr, response}) => {
 
-      if (response.multipart.length > 1) {
-        const typedArray = response.multipart[1].body;
+      var promises = [];
 
-        avs.player.enqueue(typedArray)
-        .then(() => avs.player.play())
-        .catch(error => {
-          console.error(error);
+      if (response.multipart.length) {
+        response.multipart.forEach(multipart => {
+          let body = multipart.body;
+          if (multipart.headers['Content-Type'] === 'application/json') {
+            try {
+              body = JSON.parse(body);
+            } catch(error) {
+              console.error(error);
+            }
+
+          } else if (multipart.headers['Content-Type'] === 'audio/mpeg') {
+            const start = multipart.meta.body.byteOffset.start;
+            const end = multipart.meta.body.byteOffset.end;
+
+            /**
+             * Not sure if bug in buffer module or in http message parser
+             * because it's joining arraybuffers so I have to this to
+             * seperate them out.
+             */
+            var slicedBody = xhr.response.slice(start, end);
+
+            promises.push(avs.player.enqueue(slicedBody));
+          }
+        });
+
+        Promise.all(promises)
+       .then(() => {
+          avs.player.playQueue()
         });
       }
 
@@ -214,5 +239,6 @@ function sendBlob(blob) {
       //const responseBlob = new Blob([xhr.response], {type: 'audio/mp3'});
     }
   };
+
   xhr.send(fd);
 }
