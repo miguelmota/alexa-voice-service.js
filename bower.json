@@ -1,24 +1,22 @@
 {
-  "name": "intent-utterance-generator",
-  "main": "intent-utterance-generator.js",
-  "version": "0.0.1",
-  "homepage": "https://github.com/miguelmota/intent-utterance-generator",
+  "name": "alexa-voice-service",
+  "main": "dist/avs.js",
+  "version": "0.0.6",
+  "homepage": "https://github.com/miguelmota/alexa-voice-service.js",
   "authors": [
-    "Miguel Mota <miguelmota2@gmail.com>"
+    "Miguel Mota <hello@miguelmota.com>"
   ],
-  "description": "Expand custom utterance slots of phrases, to use with Alexa Skills Kit Sample Utterances",
+  "description": "Alexa Voice Service wrapper for the browser.",
   "keywords": [
-    "intent",
-    "utterance",
-    "file",
-    "expander",
     "amazon",
     "alexa",
     "skill",
+    "kit",
     "echo",
+    "voice",
     "ask",
-    "speech",
-    "voice"
+    "avs",
+    "speech"
   ],
   "ignore": [
     "**/.*",

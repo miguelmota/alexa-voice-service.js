@@ -65,6 +65,8 @@ const AVS = require('alexa-voice-service');
 const avs = new AVS(options);
 ```
 
+Please check out example as noted above.
+
 # Documentation
 
 Most methods return a promise.

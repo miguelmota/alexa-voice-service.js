@@ -1,5 +1,6 @@
 const https = require('https');
 const fs = require('fs');
+const request = require('request');
 
 const options = {
   // Private Key
@@ -37,4 +38,24 @@ app.get('/authresponse', (req, res) => {
 
 app.post('/audio', upload.single('data'), (req, res) => {
   res.json(req.file);
+});
+
+app.get('/parse-m3u', (req, res) => {
+  const m3uUrl = req.query.url;
+  console.log(m3uUrl)
+
+  if (!m3uUrl) {
+    return res.json([]);
+  }
+
+  const urls = [];
+
+  request(m3uUrl, function(error, response, bodyResponse) {
+    console.log(bodyResponse, m3uUrl)
+    if (bodyResponse) {
+      urls.push(bodyResponse);
+    }
+
+    res.json(urls);
+  });
 });

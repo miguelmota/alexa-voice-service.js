@@ -826,6 +826,9 @@ class Player {
   emptyQueue() {
     return new Promise((resolve, reject) => {
       this._queue = [];
+      this._audio = null;
+      this._currentBuffer = null;
+      this._currentSource = null;
       resolve();
     });
   }
@@ -838,7 +841,7 @@ class Player {
         return reject(error);
       }
 
-      const stringType = toString.call(item);
+      const stringType = toString.call(item).replace(/\[.*\s(\w+)\]/, '$1');
 
       const proceed = (audioBuffer) => {
         this._queue.push(audioBuffer);
@@ -847,14 +850,16 @@ class Player {
         return resolve(audioBuffer);
       };
 
-      if (stringType === '[object DataView]' || stringType === '[object Uint8Array]') {
+      if (stringType === 'DataView' || stringType === 'Uint8Array') {
         return arrayBufferToAudioBuffer(item.buffer, this._context)
         .then(proceed);
-      } else if (stringType === '[object AudioBuffer]') {
+      } else if (stringType === 'AudioBuffer') {
         return proceed(item);
-      } else if (stringType === '[object ArrayBuffer]') {
+      } else if (stringType === 'ArrayBuffer') {
         return arrayBufferToAudioBuffer(item, this._context)
         .then(proceed);
+      } else if (stringType === 'String') {
+        return proceed(item);
       } else {
         const error = new Error('Invalid type.');
         this.emit('error', error);
@@ -885,11 +890,19 @@ class Player {
         this._log('Play audio');
         this.emit(Player.EventTypes.PLAY);
         resolve();
+      } else if (this._audio && this._audio.paused) {
+        this._log('Play audio');
+        this.emit(Player.EventTypes.PLAY);
+        this._audio.play();
+        resolve();
       } else {
         return this.deque()
         .then(audioBuffer => {
           this._log('Play audio');
           this.emit(Player.EventTypes.PLAY);
+          if (typeof audioBuffer === 'string') {
+            return this.playUrl(audioBuffer);
+          }
           return this.playAudioBuffer(audioBuffer);
         }).then(resolve);
       }
@@ -911,6 +924,12 @@ class Player {
           this._currentSource.stop();
         }
 
+        if (this._audio) {
+          this._audio.onended = function() {};
+          this._audio.currentTime = 0;
+          this._audio.pause();
+        }
+
         this._log('Stop audio');
         this.emit(Player.EventTypes.STOP);
     });
@@ -918,8 +937,12 @@ class Player {
 
   pause() {
     return new Promise((resolve, reject) => {
-        if (this._context.state === 'running') {
+        if (this._currentSource && this._context.state === 'running') {
           this._context.suspend();
+        }
+
+        if (this._audio) {
+          this._audio.pause();
         }
 
         this._log('Pause audio');
@@ -937,10 +960,15 @@ class Player {
             this._context.resume();
           }
 
-          this._currentSource.stop();
-          this._currentSource.onended = function() {};
-
+          if (this._currentSource) {
+            this._currentSource.stop();
+            this._currentSource.onended = function() {};
+          }
           return this.playAudioBuffer(this._currentBuffer);
+        } else if (this._audio) {
+          this._log('Replay audio');
+          this.emit(Player.EventTypes.REPLAY);
+          return this.playUrl(this._audio.src);
         } else {
           const error = new Error('No audio source loaded.');
           this.emit('error', error)
@@ -983,6 +1011,7 @@ class Player {
       source.start(0);
       this._currentBuffer = buffer;
       this._currentSource = source;
+      this._audio = null;
 
       source.onended = (event) => {
         this._log('Audio ended');
@@ -991,6 +1020,28 @@ class Player {
       };
 
       source.onerror = (error) => {
+        this.emit('error', error);
+        reject(error);
+      };
+    });
+  }
+
+  playUrl(url) {
+    return new Promise((resolve, reject) => {
+      const audio = new Audio();
+      audio.src = url;
+      audio.play();
+      this._currentBuffer = null;
+      this._currentSource = null;
+      this._audio = audio;
+
+      audio.onended = (event) => {
+        this._log('Audio ended');
+        this.emit(Player.EventTypes.ENDED);
+        resolve();
+      };
+
+      audio.onerror = (error) => {
         this.emit('error', error);
         reject(error);
       };

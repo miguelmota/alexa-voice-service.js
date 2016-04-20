@@ -15,7 +15,8 @@
     "cors": "^2.7.1",
     "express": "^4.13.4",
     "http-message-parser": "0.0.20",
-    "multer": "^1.1.0"
+    "multer": "^1.1.0",
+    "request": "^2.72.0"
   },
   "devDependencies": {
     "babelify": "^7.2.0",
