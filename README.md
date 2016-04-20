@@ -123,8 +123,9 @@ avs.player.stop() -> promise() - stop playing
 avs.player.replay() -> promise() - replay last audio source played
 avs.player.pause() -> promise() - pause playing
 avs.player.emptyQueue() -> promise() - empty the queue
-avs.player.playBlob(blob) -> promise() - play a blob source
+avs.player.playBlob(blob) -> promise(blob) - play a blob source
 avs.player.playAudioBuffer(audioBuffer) -> promise() - play an AudioBuffer source
+avs.player.playUrl(url) -> promise(url) - play mp3 url
 
 avs.player.on(identifier, callback)
 
