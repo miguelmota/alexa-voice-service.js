@@ -2,9 +2,7 @@
 
 > Library for interacting with [Alexa Voice Service (AVS)](https://developer.amazon.com/public/solutions/alexa/alexa-voice-service) in the browser.
 
-*NOTE: THIS LIBRARY IS STILL IN DEVELOPMENT. Expected Alpha version in May.*
-
-Things you can do with this library now:
+Things you can do with this library:
 
 - Login with Amazon and get access token
 - Get access token and refresh token from 'code' response type
@@ -13,7 +11,7 @@ Things you can do with this library now:
 - Record user audio using microphone
 - Send user audio to AVS
 - Parse response from AVS
-- Play MP3 response from AVS
+- Queue and play MP3 responses from AVS.
 
 The audio recorded in this library is *mono channel, sampled at 16k Hz, and signed 16 bit PCM encoding* which is required by AVS.
 
