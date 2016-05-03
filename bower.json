@@ -1,7 +1,7 @@
 {
   "name": "alexa-voice-service",
   "main": "dist/avs.js",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "homepage": "https://github.com/miguelmota/alexa-voice-service.js",
   "authors": [
     "Miguel Mota <hello@miguelmota.com>"

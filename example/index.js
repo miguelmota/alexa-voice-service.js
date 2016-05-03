@@ -88,9 +88,29 @@ function logError(error) {
   logOutput.innerHTML = `<li>ERROR: ${error}</li>` + logOutput.innerHTML;
 }
 
+function logAudioBlob(blob, message) {
+  return new Promise((resolve, reject) => {
+    const a = document.createElement('a');
+    const aDownload = document.createElement('a');
+    const url = window.URL.createObjectURL(blob);
+    const ext = blob.type.indexOf('mpeg') > -1 ? 'mp3' : 'wav';
+    const filename = `${Date.now()}.${ext}`;
+    a.href = url;
+    a.target = '_blank';
+    aDownload.href = url;
+    a.textContent = filename;
+    aDownload.download = filename;
+    aDownload.textContent = `download`;
+
+    audioLogOutput.innerHTML = `<li>${message}: ${a.outerHTML} ${aDownload.outerHTML}</li>` +audioLogOutput.innerHTML;
+    resolve(blob);
+  });
+}
+
 const loginBtn = document.getElementById('login');
 const logoutBtn = document.getElementById('logout');
 const logOutput = document.getElementById('log');
+const audioLogOutput = document.getElementById('audioLog');
 const startRecording = document.getElementById('startRecording');
 const stopRecording = document.getElementById('stopRecording');
 const stopAudio = document.getElementById('stopAudio');
@@ -156,6 +176,8 @@ startRecording.addEventListener('click', () => {
 stopRecording.addEventListener('click', () => {
   avs.stopRecording().then(dataView => {
     avs.player.emptyQueue()
+    .then(() => avs.audioToBlob(dataView))
+    .then(blob => logAudioBlob(blob, 'VOICE'))
     .then(() => avs.player.enqueue(dataView))
     .then(() => avs.player.play())
     .catch(error => {
@@ -174,7 +196,7 @@ stopRecording.addEventListener('click', () => {
       if (response.multipart.length) {
         response.multipart.forEach(multipart => {
           let body = multipart.body;
-          if (multipart.headers['Content-Type'] === 'application/json') {
+          if (multipart.headers && multipart.headers['Content-Type'] === 'application/json') {
             try {
               body = JSON.parse(body);
             } catch(error) {
@@ -215,6 +237,8 @@ stopRecording.addEventListener('click', () => {
               const contentId = directive.payload.audioContent;
               const audio = findAudioFromContentId(contentId);
               if (audio) {
+                avs.audioToBlob(audio)
+                .then(blob => logAudioBlob(blob, 'RESPONSE'));
                 promises.push(avs.player.enqueue(audio));
               }
             }
@@ -226,6 +250,8 @@ stopRecording.addEventListener('click', () => {
 
                 const audio = findAudioFromContentId(streamUrl);
                 if (audio) {
+                  avs.audioToBlob(audio)
+                  .then(blob => logAudioBlob(blob, 'RESPONSE'));
                   promises.push(avs.player.enqueue(audio));
                 } else if (streamUrl.indexOf('http') > -1) {
                   const xhr = new XMLHttpRequest();

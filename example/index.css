@@ -1,6 +1,13 @@
 #log {
   display: block;
-  max-height: 500px;
+  max-height: 300px;
+  overflow: auto;
+  border: 1px solid #F7F7F7;
+}
+
+#audioLog {
+  display: block;
+  max-height: 300px;
   overflow: auto;
   border: 1px solid #F7F7F7;
 }

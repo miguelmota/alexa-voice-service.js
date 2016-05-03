@@ -96,6 +96,7 @@ avs.stopRecording() -> promise;
 avs.startRecording() -> promise;
 avs.sendAudio(dataView) -> promise(response); - send audio to AVS and get back an object containing response.
 The response object is the parsed http message.
+avs.audioToBlob(AudioBuffer | DataView) -> promise(blob) - mp3 blob
 
 avs.on(identifier, callback)
 
