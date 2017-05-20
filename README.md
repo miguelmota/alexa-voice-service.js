@@ -2,6 +2,16 @@
 
 > Library for interacting with [Alexa Voice Service (AVS)](https://developer.amazon.com/public/solutions/alexa/alexa-voice-service) in the browser.
 
+---
+
+## In need of mainainers
+
+I've been out of the loop with Alexa/AVS so please ping me if you'd like to take over this library. Thanks.
+
+---
+
+## Things you can do
+
 Things you can do with this library:
 
 - Login with Amazon and get access token
@@ -19,13 +29,13 @@ The audio recorded in this library is *mono channel, sampled at 16k Hz, and sign
 
 **[https://lab.miguelmota.com/alexa-voice-service](https://lab.miguelmota.com/alexa-voice-service)**
 
-# Install
+## Install
 
 ```bash
 npm install alexa-voice-service
 ```
 
-# Example
+## Example
 
 Follow these steps to run demo locally:
 
@@ -55,7 +65,7 @@ Follow these steps to run demo locally:
   open https://localhost:9745
   ```
 
-# Usage
+## Usage
 
 ```javascript
 const AVS = require('alexa-voice-service');
@@ -65,7 +75,7 @@ const avs = new AVS(options);
 
 Please check out example as noted above.
 
-# Documentation
+## Documentation
 
 Most methods return a promise.
 
@@ -139,10 +149,10 @@ identifiers (found under AVS.Player.EventTypes object)
   DEQUE - when an audio source is removed from queue
 ```
 
-# TODO
+## TODO
 
 - [ ] Better documentation
 
-# License
+## License
 
 MIT
