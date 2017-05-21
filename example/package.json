@@ -6,7 +6,8 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node server.js",
-    "watch": "./node_modules/watchify/bin/cmd.js ./index.js -o ./index.bundle.js -v -d -t [ babelify ]"
+    "watch": "./node_modules/watchify/bin/cmd.js ./index.js -o ./index.bundle.js -v -d -t [ babelify ]",
+    "build": "./node_modules/browseify/bin/cmd.js ./index.js -o ./index.bundle.js -v -d -t [ babelify ]"
   },
   "author": "Miguel Mota <hello@miguelmota.com> (http://www.miguelmota.com/)",
   "license": "MIT",
