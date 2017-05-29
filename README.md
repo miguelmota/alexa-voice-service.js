@@ -65,6 +65,8 @@ Follow these steps to run demo locally:
   open https://localhost:9745
   ```
 
+More info in the example [README](https://github.com/miguelmota/alexa-voice-service.js/blob/master/example/README.md).
+
 ## Usage
 
 ```javascript
@@ -148,6 +150,10 @@ identifiers (found under AVS.Player.EventTypes object)
   ENQUEUE - when an audio source is added to queue
   DEQUE - when an audio source is removed from queue
 ```
+
+## Resources
+
+- [Alexa Voice Service (AVS) Authentication](https://miguelmota.com/blog/alexa-voice-service-authentication)
 
 ## TODO
 
