@@ -12,7 +12,7 @@ Visit [http://localhost:8080](http://localhost:8080)
 
 ## Config
 
-Set AVS config object in the contructor
+Set AVS config object in the constructor
 
 ```javascript
 const avs = new AVS({

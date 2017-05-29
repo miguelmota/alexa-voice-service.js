@@ -155,6 +155,8 @@ identifiers (found under AVS.Player.EventTypes object)
 
 - [Alexa Voice Service (AVS) Authentication](https://miguelmota.com/blog/alexa-voice-service-authentication)
 
+- [Generate Self-signed SSL Certificate](https://miguelmota.com/blog/generate-self-signed-ssl-certificate)
+
 ## TODO
 
 - [ ] Better documentation
