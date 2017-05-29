@@ -17,7 +17,7 @@ Set AVS config object in the constructor
 ```javascript
 const avs = new AVS({
   clientId: 'amzn1.application-oa2-client.123...',
-  deviceId: 'example_device'
+  deviceId: 'example_device',
   deviceSerialNumber: 123,
   redirectUri: `https://example.com/authresponse`
 });
