@@ -4,9 +4,9 @@
 
 ---
 
-# In need of mainainers
+# IN NEED OF MAINTAINERS
 
-I've been out of the loop with Alexa/AVS so please ping me if you'd like to take over this library. Thanks.
+Please ping me if you'd like to take over this library since I've been out of the loop with Alexa/AVS. Thanks!
 
 ---
 
