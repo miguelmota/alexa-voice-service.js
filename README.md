@@ -4,12 +4,6 @@
 
 ---
 
-# IN NEED OF MAINTAINERS
-
-Please ping me if you'd like to take over this library since I've been out of the loop with Alexa/AVS. Thanks!
-
----
-
 ## Things you can do
 
 Things you can do with this library:
@@ -125,7 +119,7 @@ identifiers (found under AVS.EventTypes object)
 
 example: avs.on(AVS.EventTypes.LOG, callback)
 
-# Player
+// Player
 
 avs.player.enqueue(dataView|typedArray|arrayBuffer|url) -> promise(arraybuffer) - add an audio source to play queue. Converts input to AudioBuffer.
 avs.player.deque() -> promise() - dequeu an audio source to play
@@ -154,12 +148,7 @@ identifiers (found under AVS.Player.EventTypes object)
 ## Resources
 
 - [Alexa Voice Service (AVS) Authentication](https://miguelmota.com/blog/alexa-voice-service-authentication)
-
 - [Generate Self-signed SSL Certificate](https://miguelmota.com/blog/generate-self-signed-ssl-certificate)
-
-## TODO
-
-- [ ] Better documentation
 
 ## License
 
